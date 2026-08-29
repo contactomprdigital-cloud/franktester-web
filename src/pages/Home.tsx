@@ -4,12 +4,14 @@ import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import { Hero } from '../components/Hero'
 import { ProductCard } from '../components/ProductCard'
+import { ProductModal } from '../components/ProductModal'
 import { ProductSection } from '../components/ProductSection'
 import { Reveal } from '../components/Reveal'
 import { Reviews } from '../components/Reviews'
 import { ScrollBackground } from '../components/ScrollBackground'
 import { SearchFilterBar, type Filters } from '../components/SearchFilterBar'
 import { REVIEWS_SEED } from '../data/reviews'
+import { useProductModal } from '../hooks/useProductModal'
 import { useCatalogStore, useCatalogSync } from '../store/catalogStore'
 
 const EMPTY_FILTERS: Filters = { query: '', section: 'all', note: 'all', price: 'all' }
@@ -18,6 +20,7 @@ export function Home() {
   useCatalogSync()
   const products = useCatalogStore((s) => s.products)
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+  const { selectedProduct, closeModal } = useProductModal()
 
   const noteOptions = useMemo(() => {
     const set = new Set<string>()
@@ -101,6 +104,7 @@ export function Home() {
       <Reviews reviews={REVIEWS_SEED} />
       <Footer />
       <CartDrawer />
+      <ProductModal product={selectedProduct} onClose={closeModal} />
     </div>
   )
 }
