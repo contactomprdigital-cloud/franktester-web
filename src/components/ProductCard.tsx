@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import type { Product, Section } from '../data/types'
+import { useProductModal } from '../hooks/useProductModal'
 import { useCartStore } from '../store/cartStore'
 
 const ACCENTS: Record<Section, { badge: string; text: string; ring: string; glow: string }> = {
@@ -34,6 +35,7 @@ const clp = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP',
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const accent = ACCENTS[product.section]
   const addItem = useCartStore((s) => s.addItem)
+  const { openModal } = useProductModal()
   const inStock = product.stock > 0
 
   return (
@@ -42,7 +44,17 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: (index % 8) * 0.05 }}
-      className={`group relative flex flex-col overflow-hidden rounded-2xl bg-forest-800/60 ring-1 ring-white/10 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:ring-2 ${accent.ring} ${accent.glow}`}
+      onClick={() => openModal(product)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          openModal(product)
+        }
+      }}
+      aria-label={`Ver detalle de ${product.name}`}
+      className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-forest-800/60 ring-1 ring-white/10 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1.5 hover:ring-2 ${accent.ring} ${accent.glow}`}
     >
       <div className="relative aspect-square overflow-hidden bg-forest-900">
         <img
@@ -96,7 +108,10 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           <span className="font-display text-xl text-gold-300">{clp.format(product.price)}</span>
           <button
             type="button"
-            onClick={() => addItem(product)}
+            onClick={(e) => {
+              e.stopPropagation()
+              addItem(product)
+            }}
             disabled={!inStock}
             aria-label={inStock ? `Agregar ${product.name} al carrito` : `${product.name} agotado`}
             className={`flex h-11 min-w-[44px] items-center justify-center gap-1.5 rounded-full px-4 text-xs font-bold uppercase tracking-wide transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${

@@ -4,12 +4,15 @@ import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
 import { Hero } from '../components/Hero'
 import { ProductCard } from '../components/ProductCard'
+import { ProductModal } from '../components/ProductModal'
 import { ProductSection } from '../components/ProductSection'
 import { Reveal } from '../components/Reveal'
 import { Reviews } from '../components/Reviews'
 import { ScrollBackground } from '../components/ScrollBackground'
 import { SearchFilterBar, type Filters } from '../components/SearchFilterBar'
 import { REVIEWS_SEED } from '../data/reviews'
+import type { Section } from '../data/types'
+import { useProductModal } from '../hooks/useProductModal'
 import { useCatalogStore, useCatalogSync } from '../store/catalogStore'
 
 const EMPTY_FILTERS: Filters = { query: '', section: 'all', note: 'all', price: 'all' }
@@ -18,6 +21,7 @@ export function Home() {
   useCatalogSync()
   const products = useCatalogStore((s) => s.products)
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
+  const { selectedProduct, closeModal } = useProductModal()
 
   const noteOptions = useMemo(() => {
     const set = new Set<string>()
@@ -55,10 +59,42 @@ export function Home() {
 
   const bySection = (section: 'hombre' | 'mujer' | 'nicho') => products.filter((p) => p.section === section)
 
+  // Color de fondo mientras se filtra: si el filtro de sección está fijado, ese
+  // es el color correcto sin ambigüedad. Si no (ej. filtrando solo por nota),
+  // pero todos los resultados resultan ser de una misma sección, igual aplica
+  // su color — si los resultados están mezclados, no hay un color único que
+  // sea correcto y se deja el degradado neutro.
+  const resultSection: Section | null = isFiltering
+    ? filters.section !== 'all'
+      ? filters.section
+      : filteredProducts.length > 0 && filteredProducts.every((p) => p.section === filteredProducts[0].section)
+        ? filteredProducts[0].section
+        : null
+    : null
+
+  const scrollToId = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const handleNavigate = (id: string) => {
+    if ((id === 'hombre' || id === 'mujer' || id === 'nicho') && isFiltering) {
+      // La sección no existe en el DOM mientras se filtra (se reemplaza por
+      // #resultados): limpiar filtros primero y esperar al siguiente frame,
+      // ya con la sección de vuelta en el DOM, para poder hacer scroll.
+      setFilters(EMPTY_FILTERS)
+      requestAnimationFrame(() => scrollToId(id))
+      return
+    }
+    scrollToId(id)
+  }
+
   return (
     <div className="min-h-screen">
-      <ScrollBackground />
-      <Header onSearchClick={() => document.getElementById('buscador')?.scrollIntoView({ behavior: 'smooth' })} />
+      <ScrollBackground isFiltering={isFiltering} resultSection={resultSection} />
+      <Header
+        onSearchClick={() => scrollToId('buscador')}
+        onNavigate={handleNavigate}
+      />
       <Hero />
 
       <SearchFilterBar
@@ -71,7 +107,7 @@ export function Home() {
       />
 
       {isFiltering ? (
-        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10 py-14 sm:py-20">
+        <section id="resultados" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10 py-14 sm:py-20">
           <Reveal className="mb-10">
             <p className="text-xs uppercase tracking-[0.3em] text-gold-400">Resultados</p>
             <h2 className="mt-2 font-display text-4xl text-cream">
@@ -101,6 +137,7 @@ export function Home() {
       <Reviews reviews={REVIEWS_SEED} />
       <Footer />
       <CartDrawer />
+      <ProductModal product={selectedProduct} onClose={closeModal} />
     </div>
   )
 }

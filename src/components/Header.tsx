@@ -13,9 +13,10 @@ const NAV_LINKS = [
 
 interface HeaderProps {
   onSearchClick: () => void
+  onNavigate: (id: string) => void
 }
 
-export function Header({ onSearchClick }: HeaderProps) {
+export function Header({ onSearchClick, onNavigate }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const count = useCartStore((s) => s.count())
@@ -53,6 +54,10 @@ export function Header({ onSearchClick }: HeaderProps) {
               <a
                 key={link.href}
                 href={link.href}
+                onClick={(e) => {
+                  e.preventDefault()
+                  onNavigate(link.href.slice(1))
+                }}
                 className="text-sm uppercase tracking-[0.14em] text-cream/80 hover:text-gold-300 transition-colors duration-300"
               >
                 {link.label}
@@ -117,7 +122,11 @@ export function Header({ onSearchClick }: HeaderProps) {
                 <a
                   key={link.href}
                   href={link.href}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setMenuOpen(false)
+                    onNavigate(link.href.slice(1))
+                  }}
                   className="py-3 text-base uppercase tracking-[0.14em] text-cream/85 border-b border-white/5 last:border-0"
                 >
                   {link.label}
