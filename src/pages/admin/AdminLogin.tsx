@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Lock } from 'lucide-react'
+import { Lock, Mail } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import logo from '../../assets/logo.webp'
@@ -10,13 +10,14 @@ export function AdminLogin() {
   const isAuthed = useAdminAuthStore((s) => s.isAuthed)
   const login = useAdminAuthStore((s) => s.login)
   const error = useAdminAuthStore((s) => s.error)
+  const [email, setEmail] = useState('')
   const [passcode, setPasscode] = useState('')
 
   if (sessionChecked && isAuthed) return <Navigate to="/admin" replace />
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
-    login(passcode)
+    login(email, passcode)
   }
 
   return (
@@ -34,6 +35,23 @@ export function AdminLogin() {
           <p className="text-sm text-cream/50">Acceso exclusivo para el equipo FrankTester</p>
         </div>
 
+        <label className="mb-1.5 block text-xs uppercase tracking-wide text-cream/50" htmlFor="email">
+          Correo
+        </label>
+        <div className="relative mb-4">
+          <Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-cream/40" />
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="tu@correo.com"
+            autoFocus
+            autoComplete="username"
+            className="h-12 w-full rounded-full bg-forest-950/70 pl-10 pr-4 text-sm text-cream outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-gold-400/60"
+          />
+        </div>
+
         <label className="mb-1.5 block text-xs uppercase tracking-wide text-cream/50" htmlFor="passcode">
           Clave de acceso
         </label>
@@ -45,7 +63,7 @@ export function AdminLogin() {
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
             placeholder="••••••••"
-            autoFocus
+            autoComplete="current-password"
             className="h-12 w-full rounded-full bg-forest-950/70 pl-10 pr-4 text-sm text-cream outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-gold-400/60"
           />
         </div>

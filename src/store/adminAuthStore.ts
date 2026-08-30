@@ -1,6 +1,5 @@
 import type { Session } from '@supabase/supabase-js'
 import { create } from 'zustand'
-import { ADMIN_EMAIL } from '../config'
 import { supabase } from '../lib/supabase'
 
 interface AdminAuthState {
@@ -8,7 +7,7 @@ interface AdminAuthState {
   sessionChecked: boolean
   isAuthed: boolean
   error: string | null
-  login: (passcode: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<boolean>
   logout: () => Promise<void>
 }
 
@@ -17,13 +16,10 @@ export const useAdminAuthStore = create<AdminAuthState>()((set) => ({
   sessionChecked: false,
   isAuthed: false,
   error: null,
-  login: async (passcode) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: ADMIN_EMAIL,
-      password: passcode,
-    })
+  login: async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error || !data.session) {
-      set({ error: 'Clave incorrecta. Intenta nuevamente.' })
+      set({ error: 'Correo o clave incorrectos. Intenta nuevamente.' })
       return false
     }
     set({ session: data.session, isAuthed: true, error: null })
