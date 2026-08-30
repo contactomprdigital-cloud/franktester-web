@@ -6,7 +6,3 @@ export const BRAND = {
   tagline: 'Testea tu suerte',
   city: 'Envíos a todo Chile',
 }
-
-// Email de la cuenta admin en Supabase Auth. No es secreto — actúa como
-// "usuario"; la clave real se valida server-side vía Supabase.
-export const ADMIN_EMAIL = 'contacto.mprdigital@gmail.com'
