@@ -1,34 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Manrope:wght@400;500;600;700;800&display=swap');
+/* Las fuentes se cargan con <link> + preconnect en index.html (un @import aquí bloquea el render). */
 @import 'tailwindcss';
 
 @theme {
-  /* Base brand palette */
-  --color-ink: #071a10;
-  --color-forest-950: #05130c;
-  --color-forest-900: #0d2818;
-  --color-forest-800: #123a22;
-  --color-forest-700: #184c2c;
+  /* Paleta Trébol Dorado */
+  --color-forest-950: #05130c; /* fondo de la página */
+  --color-forest-900: #0d2818; /* superficies: ficha, carrito */
+  --color-forest-800: #123a22; /* tarjetas (opacas) */
   --color-forest-600: #206339;
-  --color-gold-300: #f0dd9a;
+  --color-trebol: #2fa84f;
+  --color-gold-300: #f0dd9a; /* precio y anillo de foco */
   --color-gold-400: #ddc06b;
-  --color-gold-500: #c9a227;
-  --color-gold-600: #a9821c;
+  --color-gold-500: #c9a227; /* fondo de los botones principales */
   --color-cream: #f7f2e4;
-  --color-parchment: #efe6cd;
-
-  /* Section accents, extracted from assets/*.png dominant colors */
-  --color-hombre: #3a9b5c;
-  --color-hombre-soft: #bfe6cd;
-  --color-mujer: #9a6fe0;
-  --color-mujer-soft: #ded0f7;
-  --color-nicho: #1f8f8a;
-  --color-nicho-soft: #bfe6e2;
+  --color-cream-muted: #c4c0ae; /* texto secundario opaco: 6,9:1 sobre las tarjetas */
+  --color-whatsapp: #25d366;
+  --color-danger: #ff9b8f;
 
   --font-display: 'Cormorant Garamond', 'Times New Roman', serif;
   --font-body: 'Manrope', system-ui, sans-serif;
 
-  --ease-lux: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-lux-in: cubic-bezier(0.64, 0, 0.35, 1);
+  --ease-lux: cubic-bezier(0.22, 1, 0.36, 1); /* entradas y salidas */
+  --ease-move: cubic-bezier(0.77, 0, 0.175, 1); /* movimiento sobre la pantalla */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* hojas y paneles, estilo iOS */
 }
 
 @layer base {
@@ -37,17 +30,25 @@
   }
 
   html {
-    scroll-behavior: smooth;
+    background: var(--color-forest-950);
+    scroll-padding-top: 112px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
   body {
     margin: 0;
-    background: var(--color-forest-900);
+    background: var(--color-forest-950);
     color: var(--color-cream);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
+    /* clip, no hidden: hidden rompe position: sticky en iOS */
+    overflow-x: clip;
   }
 
   h1, h2, h3, h4 {
@@ -61,7 +62,11 @@
     color: var(--color-forest-950);
   }
 
-  /* touch target minimum */
+  :focus-visible {
+    outline: 2px solid var(--color-gold-300);
+    outline-offset: 3px;
+  }
+
   button, a, input, select {
     -webkit-tap-highlight-color: transparent;
   }
@@ -79,36 +84,534 @@
   }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+@layer components {
+  /* ---------- Fondo ambiental: estático, salvo un fundido de tinte al cambiar de colección ---------- */
+  .ambient > div {
+    position: absolute;
+    inset: 0;
+  }
+  .amb-base {
+    background:
+      radial-gradient(120% 70% at 50% -10%, rgba(201, 162, 39, 0.07), transparent 60%),
+      radial-gradient(140% 100% at 50% 120%, rgba(0, 0, 0, 0.45), transparent 60%);
+  }
+  .amb-tint {
+    opacity: 0;
+    transition: opacity 900ms ease;
+  }
+  .amb-hombre {
+    background:
+      radial-gradient(70% 55% at 88% 18%, rgba(47, 168, 79, 0.26), transparent 70%),
+      radial-gradient(60% 45% at 8% 92%, rgba(201, 162, 39, 0.07), transparent 70%);
+  }
+  .amb-mujer {
+    background:
+      radial-gradient(70% 55% at 12% 18%, rgba(219, 112, 160, 0.22), transparent 70%),
+      radial-gradient(60% 45% at 92% 90%, rgba(201, 162, 39, 0.08), transparent 70%);
+  }
+  .amb-nicho {
+    background:
+      radial-gradient(70% 55% at 85% 20%, rgba(31, 170, 160, 0.25), transparent 70%),
+      radial-gradient(60% 45% at 10% 88%, rgba(201, 162, 39, 0.08), transparent 70%);
+  }
+  .ambient[data-tint='hombre'] .amb-hombre,
+  .ambient[data-tint='mujer'] .amb-mujer,
+  .ambient[data-tint='nicho'] .amb-nicho {
+    opacity: 1;
+  }
+  /* Tréboles dorados casi invisibles: más presentes hacia los bordes, limpios al centro (donde van los productos) */
+  .amb-clover {
+    opacity: 0.08;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23c9a227' stroke-width='1'%3E%3Cg transform='translate(34 38) rotate(12)'%3E%3Ccircle cx='-4.5' cy='-4.5' r='4.5'/%3E%3Ccircle cx='4.5' cy='-4.5' r='4.5'/%3E%3Ccircle cx='-4.5' cy='4.5' r='4.5'/%3E%3Ccircle cx='4.5' cy='4.5' r='4.5'/%3E%3C/g%3E%3Cg transform='translate(116 112) rotate(-20) scale(.75)'%3E%3Ccircle cx='-4.5' cy='-4.5' r='4.5'/%3E%3Ccircle cx='4.5' cy='-4.5' r='4.5'/%3E%3Ccircle cx='-4.5' cy='4.5' r='4.5'/%3E%3Ccircle cx='4.5' cy='4.5' r='4.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 25%, #000 85%);
+    mask-image: radial-gradient(ellipse at 50% 45%, transparent 25%, #000 85%);
+  }
+  .amb-grain {
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  .font-display-italic {
-    font-family: var(--font-display);
-    font-style: italic;
+  /* ---------- Hero: la intro corre una vez, con CSS (fuera del hilo principal) ---------- */
+  .hero-glow-wrap {
+    -webkit-mask-image: linear-gradient(#000 65%, transparent);
+    mask-image: linear-gradient(#000 65%, transparent);
+  }
+  .hero-glow {
+    animation: drift 16s var(--ease-move) infinite alternate;
+  }
+  .hero-glow.g2 {
+    animation-direction: alternate-reverse;
+    animation-duration: 19s;
+  }
+  .spark {
+    clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+    opacity: 0;
+    animation: twinkle 4.2s var(--ease-move) infinite;
+  }
+  .hero.paused .hero-glow,
+  .hero.paused .spark {
+    animation-play-state: paused;
+  }
+  /* El contenido espera a las fuentes: así el título no se anima con la letra equivocada */
+  .hero:not(.play) .hero-content {
+    visibility: hidden;
+  }
+  .hero-word {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+    padding: 0 0.02em 0.1em;
+    margin-bottom: -0.1em;
+  }
+  .hero-word > span {
+    display: inline-block;
+  }
+  .hero-shine {
+    clip-path: polygon(-30% 0, -12% 0, -22% 100%, -40% 100%);
+    text-shadow: 0 0 22px rgba(255, 236, 170, 0.65);
+  }
+  .hero-orn path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+  .hero-orn .clv {
+    transform-origin: 160px 13px;
+  }
+  .hero.play .hero-glow-wrap {
+    animation: fade 1400ms var(--ease-lux) both;
+  }
+  .hero.play .hero-word > span {
+    transform: translateY(105%);
+    animation: rise 900ms var(--ease-lux) both;
+    animation-delay: calc(140ms + var(--i) * 90ms);
+  }
+  .hero.play .hero-shine {
+    animation: shine 1300ms var(--ease-move) 1150ms both;
+  }
+  .hero.play .hero-orn path {
+    stroke-dashoffset: 1;
+    animation: draw 1200ms var(--ease-lux) 450ms forwards;
+  }
+  .hero.play .hero-orn .clv {
+    animation: pop 600ms var(--ease-lux) 1000ms both;
+  }
+  .hero.play .fu {
+    animation: fade-up 600ms var(--ease-lux) both;
+    animation-delay: var(--d);
   }
 
-  .bg-noise {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
-    background-size: 120px 120px;
+  /* ---------- Revelado al hacer scroll (una sola vez) ---------- */
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 600ms var(--ease-lux),
+      transform 600ms var(--ease-lux);
+    transition-delay: calc(var(--i, 0) * 70ms);
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: none;
+  }
+  .section-rule {
+    transform: scaleX(0);
+    transition: transform 900ms var(--ease-lux) 150ms;
+  }
+  .reveal.in .section-rule {
+    transform: none;
   }
 
-  .mask-fade-b {
-    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  /* ---------- Tarjeta de producto ---------- */
+  .ft-card {
+    transition: transform 250ms ease;
+  }
+  .ft-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(240, 221, 154, 0.5);
+    opacity: 0;
+    transition: opacity 250ms ease;
+    pointer-events: none;
+  }
+  .ft-card:has(.ft-open:active) {
+    transform: scale(0.985);
+    transition-duration: 120ms;
+  }
+  .ft-card:has(.ft-open:focus-visible) {
+    outline: 2px solid var(--color-gold-300);
+    outline-offset: 3px;
+  }
+  .ft-open:focus-visible {
+    outline: none;
+  }
+  /* El nombre es el botón, pero toda la tarjeta es clickeable; "Agregar" queda por encima */
+  .ft-open::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+  .ft-ph img {
+    opacity: 0;
+    transition:
+      opacity 400ms ease,
+      transform 500ms var(--ease-lux);
+  }
+  .ft-ph.loaded img {
+    opacity: 1;
+  }
+  /* Brillo dorado mientras la imagen carga: movimiento constante, por eso linear */
+  .ft-ph::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(240, 221, 154, 0.08) 50%, transparent 70%);
+    transform: translateX(-100%);
+    animation: shimmer 1.4s linear infinite;
+    pointer-events: none;
+  }
+  .ft-ph.loaded::before {
+    display: none;
+  }
+  .ft-ph::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 38%, rgba(255, 240, 200, 0.28) 50%, transparent 62%);
+    transform: translateX(-120%);
+    pointer-events: none;
+  }
+
+  /* Botón "Agregar": el texto se intercambia con "Agregado" (transiciones: se puede tocar seguido) */
+  .add-btn {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    transition:
+      background-color 200ms ease,
+      transform 120ms var(--ease-lux);
+  }
+  .add-btn:active {
+    transform: scale(0.97);
+  }
+  .add-btn > span {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition:
+      transform 250ms var(--ease-lux),
+      opacity 200ms ease;
+  }
+  .add-btn .l2 {
+    transform: translateY(110%);
+    opacity: 0;
+  }
+  .add-btn.done {
+    background-color: var(--color-trebol);
+  }
+  .add-btn.done .l1 {
+    transform: translateY(-110%);
+    opacity: 0;
+  }
+  .add-btn.done .l2 {
+    transform: none;
+    opacity: 1;
+  }
+  .press {
+    transition: transform 140ms var(--ease-lux);
+  }
+  .press:active {
+    transform: scale(0.97);
+  }
+  .btn-gold {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #d9b23a, var(--color-gold-500));
+    box-shadow:
+      0 12px 30px -12px rgba(201, 162, 39, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  /* ---------- Pestañas: indicador que se desliza ---------- */
+  .tab-indicator {
+    transform-origin: left;
+    transform: translateX(0) scaleX(0);
+    transition: transform 320ms var(--ease-move);
+  }
+
+  /* ---------- Ficha de producto: hoja inferior en móvil, modal en escritorio ---------- */
+  .scrim {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 300ms ease;
+  }
+  .scrim.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .sheet {
+    transform: translateY(100%);
+    visibility: hidden;
+    transition:
+      transform 300ms var(--ease-drawer),
+      visibility 0s linear 300ms;
+  }
+  .sheet.open {
+    transform: none;
+    visibility: visible;
+    transition:
+      transform 460ms var(--ease-drawer),
+      visibility 0s;
+  }
+  @media (min-width: 768px) {
+    .sheet {
+      opacity: 0;
+      transform: translate(-50%, -47%) scale(0.97);
+      transition:
+        transform 300ms var(--ease-lux),
+        opacity 220ms ease,
+        visibility 0s linear 300ms;
+    }
+    .sheet.open {
+      opacity: 1;
+      transform: translate(-50%, -50%);
+      transition:
+        transform 300ms var(--ease-lux),
+        opacity 220ms ease,
+        visibility 0s;
+    }
+  }
+  .sheet-media img {
+    transform: scale(0.96);
+    opacity: 0;
+    transition:
+      transform 500ms var(--ease-lux),
+      opacity 300ms ease;
+  }
+  .sheet.open .sheet-media img {
+    transform: none;
+    opacity: 1;
+    transition-delay: 80ms;
+  }
+  .st {
+    opacity: 0;
+    transform: translateY(10px);
+    transition:
+      opacity 400ms var(--ease-lux),
+      transform 400ms var(--ease-lux);
+  }
+  .sheet.open .st {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(140ms + var(--i) * 45ms);
+  }
+
+  /* ---------- Carrito lateral ---------- */
+  .drawer {
+    transform: translateX(100%);
+    visibility: hidden;
+    transition:
+      transform 280ms var(--ease-drawer),
+      visibility 0s linear 280ms;
+  }
+  .drawer.open {
+    transform: none;
+    visibility: visible;
+    transition:
+      transform 420ms var(--ease-drawer),
+      visibility 0s;
+  }
+  .drawer-list.stagger .drawer-line {
+    animation: line-in 420ms var(--ease-lux) both;
+    animation-delay: calc(90ms + var(--i) * 45ms);
+  }
+
+  /* ---------- Aviso "agregado" (transición: si se dispara seguido, retoma desde donde está) ---------- */
+  .toast {
+    transform: translate(-50%, 160%);
+    opacity: 0;
+    transition:
+      transform 300ms var(--ease-lux),
+      opacity 200ms ease;
+  }
+  .toast.show {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+
+  /* Hover solo en dispositivos con puntero real: en touch el tap dispara hovers falsos */
+  @media (hover: hover) and (pointer: fine) {
+    .ft-card:hover {
+      transform: translateY(-4px);
+    }
+    .ft-card:hover::before {
+      opacity: 1;
+    }
+    .ft-card:hover .ft-ph img {
+      transform: scale(1.05);
+    }
+    .ft-card:hover .ft-ph::after {
+      transform: translateX(120%);
+      transition: transform 800ms ease;
+    }
+    .btn-gold::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%);
+      transform: translateX(-120%);
+    }
+    .btn-gold:hover::after {
+      transform: translateX(120%);
+      transition: transform 700ms ease;
+    }
+  }
+
+  /* Movimiento reducido: menos y más suave, no cero */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-glow,
+    .spark {
+      animation: none;
+    }
+    .spark {
+      display: none;
+    }
+    .hero.play .hero-word > span {
+      animation: none;
+      transform: none;
+    }
+    .hero-shine {
+      display: none;
+    }
+    .hero.play .hero-orn path {
+      animation: none;
+      stroke-dashoffset: 0;
+    }
+    .hero.play .hero-orn .clv {
+      animation: none;
+    }
+    .hero.play .fu {
+      animation-name: fade;
+    }
+    .reveal {
+      transform: none;
+      transition: opacity 400ms ease;
+    }
+    .section-rule {
+      transform: none;
+      transition: none;
+    }
+    .ft-card,
+    .ft-ph img,
+    .ft-ph::after {
+      transition: none;
+    }
+    .ft-ph::before {
+      animation: none;
+    }
+    .sheet,
+    .sheet.open,
+    .drawer,
+    .drawer.open {
+      transform: none;
+    }
+    .sheet,
+    .drawer {
+      opacity: 0;
+      transition:
+        opacity 200ms ease,
+        visibility 0s linear 200ms;
+    }
+    .sheet.open,
+    .drawer.open {
+      opacity: 1;
+      transition:
+        opacity 200ms ease,
+        visibility 0s;
+    }
+    @media (min-width: 768px) {
+      .sheet,
+      .sheet.open {
+        transform: translate(-50%, -50%);
+      }
+    }
+    .st,
+    .sheet-media img {
+      transform: none;
+    }
+    .drawer-list.stagger .drawer-line {
+      animation-name: fade;
+    }
+    .tab-indicator,
+    .amb-tint {
+      transition: none;
+    }
   }
 }
 
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes rise {
+  to {
+    transform: none;
+  }
+}
+@keyframes shine {
+  to {
+    clip-path: polygon(112% 0, 130% 0, 120% 100%, 102% 100%);
+  }
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+@keyframes drift {
+  from {
+    transform: translate3d(-40px, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(50px, 30px, 0) scale(1.12);
+  }
+}
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.5) rotate(0deg);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1) rotate(45deg);
+  }
+}
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  to {
+    transform: translateX(100%);
+  }
 }
-
-.shimmer-gold {
-  background: linear-gradient(90deg, var(--color-gold-500) 0%, var(--color-gold-300) 20%, var(--color-gold-500) 40%, var(--color-gold-500) 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: shimmer 6s linear infinite;
+@keyframes line-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
 }

@@ -8,3 +8,9 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+// Definidos por public/boot.js (apertura de marca)
+interface Window {
+  __ftIntro?: boolean
+  __ftAppReady?: () => void
+}

@@ -1,14 +1,27 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-CL">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#05130c" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
     <meta
       name="description"
       content="FrankTester — perfumes inspirados en los grandes íconos de la perfumería. Hombre, mujer y nicho, 30 ml, envíos a todo Chile."
     />
     <title>FrankTester · Testea tu suerte</title>
+
+    <!-- Fondo y apertura de marca: antes que todo lo demás, para que no haya destello blanco -->
+    <link rel="stylesheet" href="/boot.css" />
+    <script src="/boot.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Manrope:wght@400..800&display=swap"
+    />
 
     <!-- ⚠️ Reemplazar por el dominio real antes de publicar. -->
     <link rel="canonical" href="https://franktester.cl/" />
@@ -33,6 +46,55 @@
     <meta name="twitter:image" content="https://franktester.cl/favicon.png" />
   </head>
   <body>
+    <div id="ft-curtain" aria-hidden="true">
+      <div class="ftc-in">
+        <svg class="ftc-mark" viewBox="-40 -46 80 86">
+          <defs>
+            <radialGradient id="ftc-g-leaf" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="27">
+              <stop offset="0" stop-color="#8f610c" />
+              <stop offset=".3" stop-color="#d4a530" />
+              <stop offset=".72" stop-color="#f6dc84" />
+              <stop offset="1" stop-color="#c99a1e" />
+            </radialGradient>
+            <radialGradient id="ftc-g-disc" gradientUnits="userSpaceOnUse" cx="0" cy="-8" r="36">
+              <stop offset="0" stop-color="#36b858" />
+              <stop offset=".6" stop-color="#1f9a3c" />
+              <stop offset="1" stop-color="#11702a" />
+            </radialGradient>
+            <linearGradient id="ftc-g-ring" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff0b0" />
+              <stop offset=".5" stop-color="#d9ab35" />
+              <stop offset="1" stop-color="#9a6a0f" />
+            </linearGradient>
+            <path
+              id="ftc-leaf"
+              fill="url(#ftc-g-leaf)"
+              stroke="#6e4a0a"
+              stroke-width=".6"
+              d="M0 -1.7 C -1.7 -6.9 -13.8 -9.2 -13.2 -17.8 C -12.7 -24.2 -5.2 -25.3 0 -19.6 C 5.2 -25.3 12.7 -24.2 13.2 -17.8 C 13.8 -9.2 1.7 -6.9 0 -1.7 Z"
+            />
+          </defs>
+          <path
+            class="ftc-crown"
+            fill="url(#ftc-g-ring)"
+            stroke="#6e4a0a"
+            stroke-width=".5"
+            stroke-linejoin="round"
+            d="M-9 -34 L-6.5 -42 L-2.8 -36.8 L0 -44.5 L2.8 -36.8 L6.5 -42 L9 -34 Z"
+          />
+          <circle class="ftc-disc" r="31" fill="url(#ftc-g-disc)" />
+          <circle class="ftc-ring" r="31" pathLength="1" />
+          <path class="ftc-stem" pathLength="1" d="M0 2 C 0 14 1 22 7 29.5" />
+          <use class="ftc-leaf ftc-l1" href="#ftc-leaf" />
+          <use class="ftc-leaf ftc-l2" href="#ftc-leaf" />
+          <use class="ftc-leaf ftc-l3" href="#ftc-leaf" />
+          <use class="ftc-leaf ftc-l4" href="#ftc-leaf" />
+          <circle class="ftc-dot" r="2.2" fill="#f6dc84" />
+        </svg>
+        <div class="ftc-name">Frank<b>Tester</b></div>
+        <div class="ftc-tag">Testea tu suerte</div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

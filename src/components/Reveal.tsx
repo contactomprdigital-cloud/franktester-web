@@ -1,27 +1,19 @@
-import { motion } from 'framer-motion'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { useReveal } from '../hooks/useReveal'
 
 interface RevealProps {
   children: ReactNode
-  delay?: number
-  y?: number
+  /** Posición en una cascada: cada paso suma 70 ms de retraso */
+  index?: number
   className?: string
-  as?: 'div' | 'li'
 }
 
-const EASE_LUX = [0.22, 1, 0.36, 1] as const
-
-export function Reveal({ children, delay = 0, y = 24, className, as = 'div' }: RevealProps) {
-  const Component = motion[as]
+/** Aparece con un fundido hacia arriba la primera vez que entra en pantalla. */
+export function Reveal({ children, index = 0, className = '' }: RevealProps) {
+  const { ref, shown } = useReveal<HTMLDivElement>()
   return (
-    <Component
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.7, ease: EASE_LUX, delay }}
-      className={className}
-    >
+    <div ref={ref} className={`reveal ${shown ? 'in' : ''} ${className}`} style={{ '--i': index } as CSSProperties}>
       {children}
-    </Component>
+    </div>
   )
 }

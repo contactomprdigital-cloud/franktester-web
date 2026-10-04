@@ -1,141 +1,127 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, Search, ShoppingBag, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import logo from '../assets/logo.webp'
+import { Search, ShoppingBag } from 'lucide-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { Section } from '../data/types'
 import { useCartStore } from '../store/cartStore'
+import { Logo } from './Logo'
 
-const NAV_LINKS = [
-  { href: '#hombre', label: 'Hombre' },
-  { href: '#mujer', label: 'Mujer' },
-  { href: '#nicho', label: 'Nicho' },
-  { href: '#resenas', label: 'Reseñas' },
+const TABS: { id: Section; label: string }[] = [
+  { id: 'hombre', label: 'Hombre' },
+  { id: 'mujer', label: 'Mujer' },
+  { id: 'nicho', label: 'Nicho' },
 ]
 
 interface HeaderProps {
+  /** Colección en pantalla (la marca la pestaña); null en la portada */
+  active: string | null
   onSearchClick: () => void
   onNavigate: (id: string) => void
 }
 
-export function Header({ onSearchClick, onNavigate }: HeaderProps) {
+export function Header({ active, onSearchClick, onNavigate }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const count = useCartStore((s) => s.count())
   const openCart = useCartStore((s) => s.open)
+  const tabRefs = useRef<Partial<Record<Section, HTMLButtonElement | null>>>({})
+  const indicatorRef = useRef<HTMLSpanElement>(null)
+  const lastX = useRef(0)
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12)
+    const onScroll = () => setScrolled(window.scrollY > 10)
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  // El indicador se mueve solo con transform: posición con translateX y ancho
+  // con scaleX sobre una base de 100px. Sin pestaña activa se encoge en su lugar.
+  useLayoutEffect(() => {
+    const place = () => {
+      const indicator = indicatorRef.current
+      if (!indicator) return
+      const tab = active ? tabRefs.current[active as Section] : null
+      if (!tab) {
+        indicator.style.transform = `translateX(${lastX.current}px) scaleX(0)`
+        return
+      }
+      const x = tab.offsetLeft + 14
+      indicator.style.transform = `translateX(${x}px) scaleX(${(tab.offsetWidth - 28) / 100})`
+      lastX.current = x
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [active])
+
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-[background-color,box-shadow,padding] duration-500`}
-      style={{ transitionTimingFunction: 'cubic-bezier(0.22,1,0.36,1)' }}
+      className={`sticky top-0 z-40 transition-[background-color,box-shadow] duration-200 ${
+        scrolled ? 'bg-forest-950/95 shadow-[0_12px_30px_-16px_rgba(0,0,0,0.8)]' : 'bg-transparent'
+      }`}
     >
-      <div
-        className={`transition-colors duration-500 ${
-          scrolled
-            ? 'bg-forest-950/90 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.35)]'
-            : 'bg-gradient-to-b from-black/40 to-transparent'
-        }`}
-      >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-10 py-3">
-          <a href="#top" className="flex items-center gap-2 shrink-0">
-            <img src={logo} alt="FrankTester" className="h-11 w-11 rounded-full object-cover" />
-            <span className="font-display text-xl sm:text-2xl tracking-wide text-gold-300">
-              Frank<span className="text-gold-500">Tester</span>
+      <div className="mx-auto flex h-[60px] max-w-7xl items-center justify-between pl-4 pr-2 sm:pl-6 lg:px-10">
+        <a href="#top" aria-label="FrankTester, ir al inicio" className="rounded-full">
+          <Logo />
+        </a>
+
+        <div className="flex items-center">
+          <button
+            type="button"
+            onClick={onSearchClick}
+            aria-label="Buscar perfumes"
+            className="grid h-11 w-11 place-items-center rounded-full text-cream/90 transition-[background-color,transform] duration-150 hover:bg-white/[0.07] active:scale-95"
+          >
+            <Search size={20} strokeWidth={1.75} />
+          </button>
+          <button
+            type="button"
+            data-cart-button
+            onClick={openCart}
+            aria-label={`Abrir carrito, ${count} ${count === 1 ? 'producto' : 'productos'}`}
+            className="relative grid h-11 w-11 place-items-center rounded-full text-cream/90 transition-[background-color,transform] duration-150 hover:bg-white/[0.07] active:scale-95"
+          >
+            <ShoppingBag data-cart-icon size={20} strokeWidth={1.75} />
+            <span
+              data-cart-ring
+              className="pointer-events-none absolute inset-[5px] rounded-full border-[1.5px] border-gold-300 opacity-0"
+            />
+            <span
+              data-cart-badge
+              aria-hidden="true"
+              className={`absolute -right-0.5 top-0.5 grid h-[19px] min-w-[19px] place-items-center rounded-full bg-gold-500 px-[5px] text-[11px] font-extrabold text-forest-950 transition-[transform,opacity] duration-200 ease-lux ${
+                count > 0 ? 'scale-100 opacity-100' : 'scale-[0.6] opacity-0'
+              }`}
+            >
+              {count}
             </span>
-          </a>
-
-          <nav className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={(e) => {
-                  e.preventDefault()
-                  onNavigate(link.href.slice(1))
-                }}
-                className="text-sm uppercase tracking-[0.14em] text-cream/80 hover:text-gold-300 transition-colors duration-300"
-              >
-                {link.label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              type="button"
-              onClick={onSearchClick}
-              aria-label="Buscar perfumes"
-              className="grid place-items-center h-11 w-11 rounded-full text-cream/90 hover:bg-white/10 active:scale-95 transition-all duration-200"
-            >
-              <Search size={20} strokeWidth={1.75} />
-            </button>
-            <button
-              type="button"
-              onClick={openCart}
-              aria-label="Abrir carrito"
-              className="relative grid place-items-center h-11 w-11 rounded-full text-cream/90 hover:bg-white/10 active:scale-95 transition-all duration-200"
-            >
-              <ShoppingBag size={20} strokeWidth={1.75} />
-              <AnimatePresence>
-                {count > 0 && (
-                  <motion.span
-                    key={count}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                    className="absolute -top-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full bg-gold-500 text-[11px] font-bold text-forest-950"
-                  >
-                    {count}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label="Abrir menú"
-              className="grid place-items-center h-11 w-11 rounded-full text-cream/90 hover:bg-white/10 active:scale-95 transition-all duration-200 md:hidden"
-            >
-              {menuOpen ? <X size={22} strokeWidth={1.75} /> : <Menu size={22} strokeWidth={1.75} />}
-            </button>
-          </div>
+          </button>
         </div>
       </div>
 
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.nav
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="md:hidden overflow-hidden bg-forest-950/95 backdrop-blur-md"
+      <nav
+        aria-label="Colecciones"
+        className="relative mx-auto flex max-w-7xl overflow-x-auto px-1.5 [scrollbar-width:none] sm:px-4 md:justify-center"
+      >
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            ref={(el) => {
+              tabRefs.current[tab.id] = el
+            }}
+            type="button"
+            onClick={() => onNavigate(tab.id)}
+            aria-current={active === tab.id ? 'location' : undefined}
+            className={`h-11 px-3.5 text-xs font-bold uppercase tracking-[0.12em] transition-colors duration-200 ${
+              active === tab.id ? 'text-cream' : 'text-cream-muted hover:text-cream'
+            }`}
           >
-            <div className="flex flex-col px-6 py-4 gap-1">
-              {NAV_LINKS.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    setMenuOpen(false)
-                    onNavigate(link.href.slice(1))
-                  }}
-                  className="py-3 text-base uppercase tracking-[0.14em] text-cream/85 border-b border-white/5 last:border-0"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
-          </motion.nav>
-        )}
-      </AnimatePresence>
+            {tab.label}
+          </button>
+        ))}
+        <span
+          ref={indicatorRef}
+          className="tab-indicator absolute bottom-0 left-0 h-0.5 w-[100px] rounded-full bg-gradient-to-r from-gold-500 to-gold-300"
+        />
+      </nav>
     </header>
   )
 }

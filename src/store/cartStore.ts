@@ -40,7 +40,6 @@ export const useCartStore = create<CartState>()(
               lines: state.lines.map((l) =>
                 l.id === product.id ? { ...l, qty: l.qty + 1 } : l,
               ),
-              isOpen: true,
             }
           }
           return {
@@ -54,7 +53,6 @@ export const useCartStore = create<CartState>()(
                 qty: 1,
               },
             ],
-            isOpen: true,
           }
         }),
       removeItem: (id) => set((state) => ({ lines: state.lines.filter((l) => l.id !== id) })),

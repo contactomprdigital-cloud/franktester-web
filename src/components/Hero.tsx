@@ -1,110 +1,214 @@
-import { motion } from 'framer-motion'
-import logo from '../assets/logo.webp'
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react'
+import type { Product, Section } from '../data/types'
+import { useIntroReady } from '../hooks/useIntroReady'
+import { useProductModal } from '../hooks/useProductModal'
+import { EASE_OUT, prefersReducedMotion } from '../lib/motion'
+import { useCatalogStore } from '../store/catalogStore'
+import { CloverIcon } from './icons'
 
-const EASE_LUX = [0.22, 1, 0.36, 1] as const
+const clp = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+const cssVars = (vars: Record<string, string | number>) => vars as CSSProperties
 
-export function Hero() {
+const WORDS = ['Testea', 'tu', 'suerte']
+const SECTION_CTAS: { id: Section; label: string }[] = [
+  { id: 'hombre', label: 'Hombre' },
+  { id: 'mujer', label: 'Mujer' },
+  { id: 'nicho', label: 'Nicho' },
+]
+// Pocos destellos y solo en la portada: se pausan cuando sale de pantalla
+const SPARKS = [
+  { left: '12%', top: '30%', delay: '1.4s', size: 9 },
+  { left: '84%', top: '26%', delay: '2.3s', size: 12 },
+  { left: '72%', top: '46%', delay: '3.1s', size: 7 },
+  { left: '24%', top: '52%', delay: '3.8s', size: 8 },
+  { left: '90%', top: '62%', delay: '1.9s', size: 10 },
+  { left: '6%', top: '70%', delay: '4.4s', size: 7 },
+]
+
+/** Hasta 4 más vendidos con stock, empezando por uno de cada colección. */
+function pickBestsellers(products: Product[]) {
+  const best = products.filter((p) => p.badge === 'bestseller' && p.stock > 0)
+  const picked: Product[] = []
+  for (const section of ['hombre', 'mujer', 'nicho'] as const) {
+    const first = best.find((p) => p.section === section)
+    if (first) picked.push(first)
+  }
+  for (const p of best) {
+    if (picked.length >= 4) break
+    if (!picked.includes(p)) picked.push(p)
+  }
+  return picked
+}
+
+export function Hero({ onNavigate }: { onNavigate: (id: string) => void }) {
+  const play = useIntroReady()
+  const [paused, setPaused] = useState(false)
+  const heroRef = useRef<HTMLElement>(null)
+  const cloverRef = useRef<SVGSVGElement>(null)
+  const products = useCatalogStore((s) => s.products)
+  const { openModal } = useProductModal()
+  const bestsellers = pickBestsellers(products)
+  const minPrice = Math.min(...products.map((p) => p.price))
+
+  // El brillo ambiental no corre mientras la portada no está en pantalla
+  useEffect(() => {
+    const el = heroRef.current
+    if (!el) return
+    const io = new IntersectionObserver(([entry]) => setPaused(!entry.isIntersecting))
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  // "Testea tu suerte": el trébol gira y se abre un perfume al azar
+  const onLucky = () => {
+    const pool = products.filter((p) => p.stock > 0)
+    const pick = pool[Math.floor(Math.random() * pool.length)]
+    if (!pick) return
+    if (prefersReducedMotion()) {
+      openModal(pick, true)
+      return
+    }
+    cloverRef.current?.animate(
+      [
+        { transform: 'rotate(0deg) scale(1)' },
+        { transform: 'rotate(540deg) scale(1.25)', offset: 0.6 },
+        { transform: 'rotate(720deg) scale(1)' },
+      ],
+      { duration: 900, easing: EASE_OUT },
+    )
+    setTimeout(() => openModal(pick, true), 620)
+  }
+
   return (
-    <section id="top" className="relative flex min-h-[100svh] items-center justify-center overflow-hidden">
-      {/* color de fondo: aportado por <ScrollBackground /> (fixed, capa "top") */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(201,162,39,0.16),transparent_60%)]" />
-      <div className="absolute inset-0 bg-noise mix-blend-overlay" />
-
-      {/* floating gold particles */}
-      <div className="pointer-events-none absolute inset-0">
-        {Array.from({ length: 18 }).map((_, i) => (
-          <motion.span
-            key={i}
-            className="absolute h-1 w-1 rounded-full bg-gold-400/70"
-            style={{
-              left: `${(i * 37) % 100}%`,
-              top: `${(i * 53) % 100}%`,
-            }}
-            animate={{ opacity: [0.15, 0.8, 0.15], y: [0, -16, 0] }}
-            transition={{
-              duration: 4 + (i % 5),
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: (i % 7) * 0.4,
-            }}
-          />
-        ))}
+    <section
+      ref={heroRef}
+      id="top"
+      className={`hero relative isolate -mt-[104px] overflow-hidden px-5 pb-10 pt-[140px] md:px-6 md:pb-20 md:pt-[190px] md:text-center ${
+        play ? 'play' : ''
+      } ${paused ? 'paused' : ''}`}
+    >
+      <div className="hero-glow-wrap pointer-events-none absolute inset-0 -z-10">
+        <div className="hero-glow absolute left-1/2 top-[-280px] -ml-[340px] h-[680px] w-[680px] rounded-full bg-[radial-gradient(closest-side,rgba(201,162,39,0.30),rgba(201,162,39,0.08)_55%,transparent_75%)]" />
+        <div className="hero-glow g2 absolute -bottom-[260px] -left-[220px] h-[520px] w-[520px] rounded-full bg-[radial-gradient(closest-side,rgba(47,168,79,0.18),transparent_75%)]" />
       </div>
+      {SPARKS.map((s) => (
+        <span
+          key={`${s.left}-${s.top}`}
+          className="spark pointer-events-none absolute bg-gold-300"
+          style={{ left: s.left, top: s.top, width: s.size, height: s.size, animationDelay: s.delay }}
+        />
+      ))}
 
-      <div className="relative z-10 mx-auto flex max-w-4xl flex-col items-center px-6 text-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE_LUX }}
-          className="relative mb-8"
-        >
-          <div className="absolute inset-0 -z-10 rounded-full bg-gold-500/25 blur-3xl" />
-          <img
-            src={logo}
-            alt="FrankTester"
-            className="h-32 w-32 sm:h-40 sm:w-40 rounded-full object-cover ring-1 ring-gold-400/40 shadow-[0_0_60px_rgba(201,162,39,0.35)]"
-          />
-        </motion.div>
-
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: EASE_LUX, delay: 0.15 }}
-          className="mb-3 text-xs sm:text-sm uppercase tracking-[0.35em] text-gold-400"
-        >
-          Perfumería inspirada · 30&nbsp;ml
-        </motion.p>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE_LUX, delay: 0.25 }}
-          className="shimmer-gold text-balance font-display text-5xl sm:text-7xl leading-[1.05]"
-        >
-          Testea tu suerte
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE_LUX, delay: 0.4 }}
-          className="mt-6 max-w-xl text-balance text-base sm:text-lg text-cream/75"
-        >
-          Fragancias inspiradas en los grandes íconos del perfume, a un precio que no
-          esperabas. Hombre, mujer y nicho — todo a $6.000 y $8.000 los 30&nbsp;ml, con
-          envíos a todo Chile.
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: EASE_LUX, delay: 0.55 }}
-          className="mt-10 flex flex-col sm:flex-row items-center gap-4"
-        >
-          <a
-            href="#hombre"
-            className="min-h-[44px] rounded-full bg-gold-500 px-8 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-forest-950 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.04] hover:bg-gold-400 active:scale-[0.97]"
-          >
-            Explorar catálogo
-          </a>
-          <a
-            href="#nicho"
-            className="min-h-[44px] rounded-full border border-gold-400/50 px-8 py-3 text-sm font-semibold uppercase tracking-[0.14em] text-gold-300 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.04] hover:border-gold-300 hover:bg-white/5 active:scale-[0.97]"
-          >
-            Línea Nicho
-          </a>
-        </motion.div>
-      </div>
-
-      <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
-        animate={{ y: [0, 8, 0] }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        <div className="h-9 w-5 rounded-full border border-gold-400/50 p-1">
-          <div className="h-1.5 w-1.5 rounded-full bg-gold-400" />
+      <div className="hero-content mx-auto max-w-7xl">
+        <div className="fu" style={cssVars({ '--d': '60ms' })}>
+          <span className="inline-flex items-center gap-2 rounded-full border border-gold-300/35 bg-forest-950/45 px-3.5 py-[7px] text-[12.5px] font-semibold text-gold-300">
+            <CloverIcon className="h-3.5 w-3.5 text-trebol" />
+            Envíos a todo Chile · 30 ml
+          </span>
         </div>
-      </motion.div>
+
+        <div>
+          <h1 className="relative mb-1.5 mt-[18px] inline-block text-[clamp(54px,15vw,112px)] leading-[0.95] tracking-[-0.015em] text-gold-300">
+            {WORDS.map((word, i) => (
+              <Fragment key={word}>
+                <span className="hero-word">
+                  <span style={cssVars({ '--i': i })}>{word}</span>
+                </span>
+                {i < WORDS.length - 1 && ' '}
+              </Fragment>
+            ))}
+            {/* Copia del título que recorre un destello dorado, una sola vez */}
+            <span className="hero-shine pointer-events-none absolute inset-0 text-[#fffaeb]" aria-hidden="true">
+              {WORDS.map((word, i) => (
+                <Fragment key={word}>
+                  <span className="hero-word">
+                    <span>{word}</span>
+                  </span>
+                  {i < WORDS.length - 1 && ' '}
+                </Fragment>
+              ))}
+            </span>
+          </h1>
+        </div>
+
+        <svg
+          className="hero-orn mb-[18px] mt-1 block h-[26px] w-[260px] text-gold-500 md:mx-auto md:mb-[22px] md:w-[320px]"
+          viewBox="0 0 320 26"
+          aria-hidden="true"
+        >
+          <g fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+            <path pathLength={1} d="M146 13 C 120 13, 110 3, 88 7 S 50 19, 30 12 S 10 9, 4 13" />
+            <path pathLength={1} d="M174 13 C 200 13, 210 3, 232 7 S 270 19, 290 12 S 310 9, 316 13" />
+          </g>
+          <g className="clv" fill="currentColor">
+            <circle cx="156.5" cy="9.5" r="3.6" />
+            <circle cx="163.5" cy="9.5" r="3.6" />
+            <circle cx="156.5" cy="16.5" r="3.6" />
+            <circle cx="163.5" cy="16.5" r="3.6" />
+          </g>
+        </svg>
+
+        <p
+          className="fu m-0 max-w-[34ch] text-[17px] leading-normal text-cream-muted md:mx-auto md:text-[19px]"
+          style={cssVars({ '--d': '380ms' })}
+        >
+          Inspirados en los grandes íconos de la perfumería.{' '}
+          <strong className="font-extrabold text-cream">Desde {clp.format(minPrice)}.</strong>
+        </p>
+
+        <div className="mt-[26px] grid max-w-[460px] grid-cols-3 gap-2 md:flex md:max-w-none md:justify-center">
+          <button
+            type="button"
+            onClick={onLucky}
+            className="btn-gold press fu col-span-3 inline-flex h-[54px] items-center justify-center gap-2.5 rounded-full px-6 text-[15px] font-extrabold text-forest-950"
+            style={cssVars({ '--d': '480ms' })}
+          >
+            <CloverIcon ref={cloverRef} className="h-5 w-5" />
+            Testea tu suerte
+          </button>
+          {SECTION_CTAS.map((cta, i) => (
+            <button
+              key={cta.id}
+              type="button"
+              onClick={() => onNavigate(cta.id)}
+              className="press fu h-[54px] rounded-full border border-white/[0.12] bg-forest-800/75 px-5 text-[14.5px] font-bold transition-[background-color,border-color,transform] duration-150 hover:border-gold-300/35 hover:bg-forest-800"
+              style={cssVars({ '--d': `${540 + i * 50}ms` })}
+            >
+              {cta.label}
+            </button>
+          ))}
+        </div>
+
+        {bestsellers.length > 0 && (
+          <>
+            <div
+              className="fu mb-3 mt-[34px] flex items-center gap-2.5 text-xs font-bold uppercase tracking-[0.16em] text-trebol md:justify-center"
+              style={cssVars({ '--d': '700ms' })}
+            >
+              <span className="hidden h-px w-12 bg-gradient-to-l from-trebol/70 to-transparent md:block" />
+              Más vendidos
+              <span className="h-px w-12 bg-gradient-to-r from-trebol/70 to-transparent" />
+            </div>
+            <div className="-mx-5 flex snap-x snap-mandatory scroll-px-5 gap-3 overflow-x-auto px-5 pb-2 pt-0.5 [scrollbar-width:none] md:mx-0 md:justify-center md:overflow-visible md:px-0">
+              {bestsellers.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => openModal(p)}
+                  className="press fu w-[142px] shrink-0 snap-start overflow-hidden rounded-2xl bg-forest-800 text-left shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)] md:w-[190px]"
+                  style={cssVars({ '--d': `${760 + i * 60}ms` })}
+                >
+                  <img src={p.image} alt="" width={500} height={500} className="aspect-square w-full object-cover" />
+                  <span className="block px-[11px] pb-[11px] pt-[9px] text-[13.5px] font-bold">
+                    {p.name}
+                    <span className="mt-0.5 block font-extrabold text-gold-300">{clp.format(p.price)}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </section>
   )
 }

@@ -1,162 +1,282 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { Check, Plus, X } from 'lucide-react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { WHATSAPP_NUMBER } from '../config'
 import type { OlfactoryNotes, Product } from '../data/types'
+import { addWithFlight } from '../lib/motion'
+import { useCartStore } from '../store/cartStore'
+import { useToastStore } from '../store/toastStore'
+import { CloverIcon, WhatsAppIcon } from './icons'
 
 const clp = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
-const EASE_LUX = [0.22, 1, 0.36, 1] as const
+const stagger = (i: number) => ({ '--i': i }) as CSSProperties
 
-const NOTE_GROUPS: { key: keyof OlfactoryNotes; label: string; chip: string }[] = [
-  { key: 'top', label: 'Notas de Salida', chip: 'bg-blue-500/20' },
-  { key: 'heart', label: 'Notas de Corazón', chip: 'bg-pink-500/20' },
-  { key: 'base', label: 'Notas de Base', chip: 'bg-amber-500/20' },
+const NOTE_GROUPS: { key: keyof OlfactoryNotes; label: string }[] = [
+  { key: 'top', label: 'Salida' },
+  { key: 'heart', label: 'Corazón' },
+  { key: 'base', label: 'Fondo' },
 ]
-
-const listVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.05 } },
-}
-const noteVariants = {
-  hidden: { opacity: 0, x: -10 },
-  visible: { opacity: 1, x: 0 },
-}
+const BADGE_LABEL = { bestseller: 'Más vendido', new: 'Nuevo' } as const
 
 interface ProductModalProps {
   product: Product | null
+  /** Abierta con "Testea tu suerte" */
+  lucky: boolean
   onClose: () => void
 }
 
-export function ProductModal({ product, onClose }: ProductModalProps) {
-  const closeButtonRef = useRef<HTMLButtonElement>(null)
+/** Ficha de producto: hoja que sube desde abajo en móvil (se cierra arrastrando), modal en escritorio. */
+export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
+  // Queda montada al cerrar, con el último producto, para poder animar la salida
+  const [current, setCurrent] = useState<Product | null>(product)
+  if (product && product !== current) setCurrent(product)
+  const [open, setOpen] = useState(false)
+  const [added, setAdded] = useState(false)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const scrimRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const drag = useRef<{ y0: number; y: number; t: number; v: number } | null>(null)
+  const addedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const addItem = useCartStore((s) => s.addItem)
+  const showToast = useToastStore((s) => s.show)
 
+  // Un frame de espera al abrir: así la cascada de entrada corre con el contenido ya puesto
   useEffect(() => {
-    if (!product) return
-    closeButtonRef.current?.focus()
+    if (!product) {
+      setOpen(false)
+      return
+    }
+    setAdded(false)
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+    const frame = requestAnimationFrame(() => setOpen(true))
+    return () => cancelAnimationFrame(frame)
+  }, [product])
+
+  // Abierta: el resto de la página queda inerte y sin scroll, Escape cierra y
+  // el foco vuelve a donde estaba al cerrar
+  useEffect(() => {
+    if (!open) return
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const root = document.getElementById('root')
+    root?.setAttribute('inert', '')
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus({ preventScroll: true })
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [product, onClose])
+    return () => {
+      root?.removeAttribute('inert')
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', onKeyDown)
+      opener?.focus({ preventScroll: true })
+    }
+  }, [open, onClose])
 
-  const handleWhatsApp = () => {
-    if (!product) return
-    const message = `Hola, me interesa el perfume ${product.name} de ${product.volume}`
-    window.open(
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`,
-      '_blank',
-      'noopener,noreferrer',
-    )
+  useEffect(() => () => clearTimeout(addedTimer.current), [])
+
+  // Arrastrar hacia abajo para cerrar (solo móvil): sigue al dedo y decide por distancia o velocidad
+  const onDragStart = (e: PointerEvent<HTMLDivElement>) => {
+    const sheet = sheetRef.current
+    if (!sheet || window.matchMedia('(min-width: 768px)').matches) return
+    drag.current = { y0: e.clientY, y: e.clientY, t: performance.now(), v: 0 }
+    sheet.style.transition = 'none'
+    if (scrimRef.current) scrimRef.current.style.transition = 'none'
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onDragMove = (e: PointerEvent<HTMLDivElement>) => {
+    const d = drag.current
+    const sheet = sheetRef.current
+    if (!d || !sheet) return
+    const now = performance.now()
+    d.v = (e.clientY - d.y) / Math.max(1, now - d.t)
+    d.y = e.clientY
+    d.t = now
+    const dy = Math.max(0, e.clientY - d.y0)
+    sheet.style.transform = `translateY(${dy}px)`
+    if (scrimRef.current) scrimRef.current.style.opacity = String(Math.max(0, 1 - dy / sheet.offsetHeight))
+  }
+  const onDragEnd = () => {
+    const d = drag.current
+    const sheet = sheetRef.current
+    if (!d || !sheet) return
+    drag.current = null
+    const dy = Math.max(0, d.y - d.y0)
+    sheet.style.transition = ''
+    sheet.style.transform = ''
+    if (scrimRef.current) {
+      scrimRef.current.style.transition = ''
+      scrimRef.current.style.opacity = ''
+    }
+    if (dy > 140 || d.v > 0.6) onClose()
   }
 
-  return (
-    <AnimatePresence>
-      {product && (
-        <>
-          <motion.div
-            key="backdrop"
-            onClick={onClose}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm"
-          />
-          <motion.div
-            key="modal"
-            onClick={onClose}
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.3, ease: EASE_LUX }}
-            className="fixed inset-0 z-[90] flex items-center justify-center p-4"
-          >
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label={product.name}
-              onClick={(e) => e.stopPropagation()}
-              className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-y-auto rounded-3xl bg-forest-900 ring-1 ring-white/10 shadow-2xl"
-            >
-              <div className="relative aspect-[4/3] shrink-0 overflow-hidden bg-forest-950 sm:aspect-video">
-                <img
-                  src={product.image}
-                  alt={`${product.name} — inspirado en ${product.inspiration}`}
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-forest-950/90 via-transparent to-transparent" />
-                <button
-                  ref={closeButtonRef}
-                  type="button"
-                  onClick={onClose}
-                  aria-label="Cerrar"
-                  className="absolute right-3 top-3 grid h-11 w-11 place-items-center rounded-full bg-black/40 text-cream backdrop-blur-sm transition-all hover:bg-black/60 active:scale-90"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+  const onAdd = () => {
+    if (!current) return
+    const item = current
+    setAdded(true)
+    clearTimeout(addedTimer.current)
+    addedTimer.current = setTimeout(() => setAdded(false), 1400)
+    showToast(`${item.name} agregado`, true)
+    addWithFlight(imgRef.current, () => addItem(item))
+  }
 
-              <div className="p-6 sm:p-8">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-gold-300">
-                  Inspirado en {product.inspiration}
-                </p>
-                <h2 className="mt-1 font-display text-3xl text-cream sm:text-4xl">{product.name}</h2>
+  const onWhatsApp = () => {
+    if (!current) return
+    const message =
+      current.stock > 0
+        ? `Hola, me interesa el perfume ${current.name} (${current.volume}, ${clp.format(current.price)})`
+        : `Hola, avísame cuando vuelva ${current.name} (${current.volume})`
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
+  }
 
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <span className="font-display text-2xl text-gold-300">{clp.format(product.price)}</span>
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-wide text-cream/70">
-                    {product.volume}
-                  </span>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                      product.stock > 0 ? 'bg-gold-500/20 text-gold-300' : 'bg-red-500/20 text-red-300'
-                    }`}
-                  >
-                    {product.stock > 0 ? `${product.stock} disponibles` : 'Agotado'}
-                  </span>
+  const inStock = (current?.stock ?? 0) > 0
+
+  return createPortal(
+    <>
+      <div
+        ref={scrimRef}
+        onClick={onClose}
+        className={`scrim fixed inset-0 z-[70] bg-[rgba(2,8,5,0.62)] ${open ? 'show' : ''}`}
+      />
+      <div
+        ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="product-sheet-title"
+        aria-hidden={!open}
+        className={`sheet fixed inset-x-0 bottom-0 z-[71] flex max-h-[92dvh] flex-col rounded-t-[26px] bg-forest-900 shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.85)] md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:max-h-[86vh] md:w-[min(900px,92vw)] md:rounded-3xl ${
+          open ? 'open' : ''
+        }`}
+      >
+        <div
+          onPointerDown={onDragStart}
+          onPointerMove={onDragMove}
+          onPointerUp={onDragEnd}
+          onPointerCancel={onDragEnd}
+          className="grid h-[26px] shrink-0 cursor-grab touch-none place-items-center md:hidden"
+        >
+          <span className="h-[5px] w-[42px] rounded-full bg-white/30" />
+        </div>
+        <button
+          ref={closeRef}
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="absolute right-3 top-[34px] z-[3] grid h-11 w-11 place-items-center rounded-full bg-black/55 text-white transition-transform duration-150 active:scale-90 md:right-3.5 md:top-3.5"
+        >
+          <X size={20} />
+        </button>
+
+        {current && (
+          <>
+            <div ref={scrollRef} className="overflow-y-auto overscroll-contain">
+              <div className="px-4 pb-2 md:grid md:grid-cols-2 md:items-start md:gap-7 md:px-6 md:pt-6">
+                <div className="sheet-media overflow-hidden rounded-[18px] bg-forest-950">
+                  <img
+                    ref={imgRef}
+                    src={current.image}
+                    alt={`${current.name}, inspirado en ${current.inspiration}`}
+                    width={500}
+                    height={500}
+                    className="aspect-square w-full object-contain"
+                  />
                 </div>
 
-                <motion.div initial="hidden" animate="visible" variants={listVariants} className="mt-6 space-y-6">
-                  {NOTE_GROUPS.map((group) => (
-                    <div key={group.key}>
-                      <h3 className="mb-3 text-sm uppercase tracking-wide text-gold-300">{group.label}</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {product.notes[group.key].map((note) => (
-                          <motion.span
-                            key={note}
-                            variants={noteVariants}
-                            className={`rounded-full px-3 py-1.5 text-sm text-cream ${group.chip}`}
-                          >
-                            {note}
-                          </motion.span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </motion.div>
+                <div className="px-1 pb-1.5 pt-[18px] md:pt-1.5">
+                  {lucky && (
+                    <span
+                      className="st mb-2.5 inline-flex items-center gap-1.5 rounded-full bg-trebol/15 px-[11px] py-[5px] text-[12.5px] font-bold text-[#7fe09a]"
+                      style={stagger(0)}
+                    >
+                      <CloverIcon className="h-3.5 w-3.5" />
+                      Tu fragancia de la suerte
+                    </span>
+                  )}
+                  <p className="st m-0 text-sm font-semibold text-gold-300" style={stagger(0)}>
+                    Inspirado en {current.inspiration}
+                  </p>
+                  <h2 id="product-sheet-title" className="st mb-2.5 mt-0.5 text-[40px] leading-none" style={stagger(1)}>
+                    {current.name}
+                  </h2>
+                  <div className="st flex flex-wrap items-center gap-2" style={stagger(2)}>
+                    <strong className="mr-1 text-[25px] font-extrabold tabular-nums text-gold-300">
+                      {clp.format(current.price)}
+                    </strong>
+                    <span className="rounded-full bg-forest-800 px-2.5 py-[5px] text-xs font-semibold text-cream-muted">
+                      {current.volume}
+                    </span>
+                    {current.badge && (
+                      <span className="rounded-full bg-forest-800 px-2.5 py-[5px] text-xs font-semibold text-cream-muted">
+                        {BADGE_LABEL[current.badge]}
+                      </span>
+                    )}
+                    {!inStock && (
+                      <span className="rounded-full bg-forest-800 px-2.5 py-[5px] text-xs font-semibold text-danger">
+                        Agotado
+                      </span>
+                    )}
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={handleWhatsApp}
-                  className="mt-8 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 text-sm font-bold uppercase tracking-wide text-forest-950 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.02] active:scale-[0.97]"
-                >
-                  <WhatsAppIcon /> Consultar por WhatsApp
-                </button>
+                  <div className="grid gap-3.5 px-1 py-[18px]">
+                    {NOTE_GROUPS.map((group, k) => (
+                      <div key={group.key} className="st" style={stagger(3 + k)}>
+                        <p className="mb-2 mt-0 text-xs font-bold uppercase tracking-[0.12em] text-cream-muted">
+                          {group.label}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {current.notes[group.key].map((note) => (
+                            <span key={note} className="rounded-full bg-forest-800 px-3 py-1.5 text-sm">
+                              {note}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  )
-}
 
-function WhatsAppIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-      <path d="M12.012 2C6.495 2 2.017 6.478 2.017 11.995c0 1.996.596 3.855 1.615 5.404L2 22l4.735-1.586a9.936 9.936 0 0 0 5.276 1.51h.004c5.516 0 9.994-4.478 9.994-9.995C22.01 6.412 17.53 2 12.012 2zm0 18.19h-.003a8.155 8.155 0 0 1-4.246-1.169l-.304-.181-3.15 1.055 1.07-3.086-.198-.316a8.153 8.153 0 0 1-1.264-4.398c0-4.514 3.673-8.187 8.196-8.187 2.189 0 4.246.855 5.793 2.406a8.13 8.13 0 0 1 2.402 5.789c0 4.514-3.673 8.187-8.196 8.187z" />
-    </svg>
+            <div className="flex shrink-0 gap-2.5 border-t border-white/[0.08] bg-forest-900 px-4 pb-[calc(14px+env(safe-area-inset-bottom))] pt-3 md:px-6 md:pb-[18px] md:pt-3.5">
+              {inStock ? (
+                <button
+                  type="button"
+                  onClick={onAdd}
+                  aria-label={`Agregar ${current.name} al carrito`}
+                  className={`add-btn h-[52px] flex-1 rounded-full bg-gold-500 text-[15px] font-extrabold text-forest-950 ${
+                    added ? 'done' : ''
+                  }`}
+                >
+                  <span className="l1">
+                    <Plus size={17} strokeWidth={2.6} />
+                    Agregar al carrito
+                  </span>
+                  <span className="l2" aria-hidden="true">
+                    <Check size={17} strokeWidth={2.8} />
+                    Agregado
+                  </span>
+                </button>
+              ) : (
+                <span className="grid h-[52px] flex-1 place-items-center rounded-full bg-white/10 text-[15px] font-bold text-cream-muted">
+                  Agotado
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={onWhatsApp}
+                className="press flex h-[52px] items-center gap-2 rounded-full border-[1.5px] border-whatsapp px-4 text-sm font-bold"
+              >
+                <WhatsAppIcon className="h-5 w-5 text-whatsapp" />
+                {inStock ? 'Consultar' : 'Avísame'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </>,
+    document.body,
   )
 }

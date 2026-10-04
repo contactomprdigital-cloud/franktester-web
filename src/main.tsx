@@ -19,3 +19,6 @@ createRoot(rootElement).render(
     </ErrorBoundary>
   </StrictMode>,
 )
+
+// Avisa a public/boot.js que la app ya montó, para que retire la apertura de marca
+requestAnimationFrame(() => window.__ftAppReady?.())
