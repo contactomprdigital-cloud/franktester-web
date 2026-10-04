@@ -11,12 +11,18 @@ interface AdminAuthState {
   logout: () => Promise<void>
 }
 
+const NOT_CONFIGURED = 'El panel no está disponible: falta configurar Supabase.'
+
 export const useAdminAuthStore = create<AdminAuthState>()((set) => ({
   session: null,
-  sessionChecked: false,
+  sessionChecked: supabase === null,
   isAuthed: false,
   error: null,
   login: async (email, password) => {
+    if (!supabase) {
+      set({ error: NOT_CONFIGURED })
+      return false
+    }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error || !data.session) {
       set({ error: 'Correo o clave incorrectos. Intenta nuevamente.' })
@@ -26,15 +32,25 @@ export const useAdminAuthStore = create<AdminAuthState>()((set) => ({
     return true
   },
   logout: async () => {
-    await supabase.auth.signOut()
-    set({ session: null, isAuthed: false })
+    try {
+      await supabase?.auth.signOut()
+    } finally {
+      set({ session: null, isAuthed: false })
+    }
   },
 }))
 
-supabase.auth.getSession().then(({ data }) => {
-  useAdminAuthStore.setState({ session: data.session, isAuthed: data.session !== null, sessionChecked: true })
-})
+if (supabase) {
+  supabase.auth
+    .getSession()
+    .then(({ data }) => {
+      useAdminAuthStore.setState({ session: data.session, isAuthed: data.session !== null, sessionChecked: true })
+    })
+    .catch(() => {
+      useAdminAuthStore.setState({ session: null, isAuthed: false, sessionChecked: true })
+    })
 
-supabase.auth.onAuthStateChange((_event, session) => {
-  useAdminAuthStore.setState({ session, isAuthed: session !== null, sessionChecked: true })
-})
+  supabase.auth.onAuthStateChange((_event, session) => {
+    useAdminAuthStore.setState({ session, isAuthed: session !== null, sessionChecked: true })
+  })
+}
