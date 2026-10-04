@@ -4,7 +4,7 @@ import { AdminProductRow } from '../../components/admin/AdminProductRow'
 import logo from '../../assets/logo.webp'
 import type { Section } from '../../data/types'
 import { useAdminAuthStore } from '../../store/adminAuthStore'
-import { useCatalogStore } from '../../store/catalogStore'
+import { useCatalogStore, useCatalogSync } from '../../store/catalogStore'
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: 'hombre', label: 'Hombre' },
@@ -19,6 +19,10 @@ export function AdminDashboard() {
   const products = useCatalogStore((s) => s.products)
   const updateProduct = useCatalogStore((s) => s.updateProduct)
   const resetToSeed = useCatalogStore((s) => s.resetToSeed)
+  const loading = useCatalogStore((s) => s.loading)
+  // El panel se puede abrir directo (sin pasar por la tienda): tiene que cargar
+  // el catálogo real antes de permitir editar, o se editaría sobre el seed.
+  useCatalogSync()
 
   if (!sessionChecked) return null
   if (!isAuthed) return <Navigate to="/admin/login" replace />
@@ -43,7 +47,8 @@ export function AdminDashboard() {
           <button
             type="button"
             onClick={() => {
-              if (confirm('¿Restaurar todos los productos a sus valores originales del catálogo?')) resetToSeed()
+              if (confirm('¿Restaurar todos los productos a sus valores originales del catálogo?'))
+                resetToSeed().catch(() => alert('No se pudo restaurar el catálogo. Intenta de nuevo.'))
             }}
             className="flex h-10 items-center gap-1.5 rounded-full bg-white/5 px-3 text-xs text-cream/80 ring-1 ring-white/10 hover:bg-white/10"
           >
@@ -60,7 +65,8 @@ export function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8">
-        {SECTIONS.map(({ key, label }) => (
+        {loading && <p className="text-sm text-cream/70">Cargando catálogo…</p>}
+        {!loading && SECTIONS.map(({ key, label }) => (
           <section key={key} className="mb-10">
             <h2 className="mb-3 font-display text-2xl text-gold-300">{label}</h2>
             <div className="flex flex-col gap-3">

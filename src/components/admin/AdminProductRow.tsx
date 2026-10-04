@@ -2,9 +2,11 @@ import { Check } from 'lucide-react'
 import { useState } from 'react'
 import type { Product } from '../../data/types'
 
+type EditablePatch = Partial<Pick<Product, 'name' | 'price' | 'stock' | 'notes' | 'badge'>>
+
 interface AdminProductRowProps {
   product: Product
-  onSave: (patch: Partial<Product>) => Promise<void>
+  onSave: (patch: EditablePatch) => Promise<void>
 }
 
 function toText(list: string[]) {
@@ -18,7 +20,13 @@ function fromText(text: string) {
     .filter(Boolean)
 }
 
+const INTEGER = /^\d+$/
+
 export function AdminProductRow({ product, onSave }: AdminProductRowProps) {
+  // `original` es la versión del producto sobre la que se está editando: solo
+  // se envían los campos que cambiaron respecto de ella, para no pisar en la BD
+  // valores que otro admin (o una carga posterior) haya actualizado.
+  const [original, setOriginal] = useState(product)
   const [name, setName] = useState(product.name)
   const [price, setPrice] = useState(String(product.price))
   const [stock, setStock] = useState(String(product.stock))
@@ -30,26 +38,57 @@ export function AdminProductRow({ product, onSave }: AdminProductRowProps) {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const dirty =
-    name !== product.name ||
-    price !== String(product.price) ||
-    stock !== String(product.stock) ||
-    top !== toText(product.notes.top) ||
-    heart !== toText(product.notes.heart) ||
-    base !== toText(product.notes.base) ||
-    badge !== product.badge
+    name !== original.name ||
+    price !== String(original.price) ||
+    stock !== String(original.stock) ||
+    top !== toText(original.notes.top) ||
+    heart !== toText(original.notes.heart) ||
+    base !== toText(original.notes.base) ||
+    badge !== original.badge
+
+  // Llegó una versión nueva del producto (carga desde la BD o Realtime): si la
+  // fila no tiene ediciones pendientes, se muestra la versión nueva.
+  if (product !== original && !dirty) {
+    setOriginal(product)
+    setName(product.name)
+    setPrice(String(product.price))
+    setStock(String(product.stock))
+    setTop(toText(product.notes.top))
+    setHeart(toText(product.notes.heart))
+    setBase(toText(product.notes.base))
+    setBadge(product.badge)
+  }
+
+  const validate = (): string | null => {
+    const trimmed = name.trim()
+    if (trimmed.length < 1 || trimmed.length > 80) return 'El nombre debe tener entre 1 y 80 caracteres.'
+    if (!INTEGER.test(price.trim()) || Number(price) < 1 || Number(price) > 1_000_000)
+      return 'Precio inválido: usa solo números enteros entre 1 y 1.000.000 (ej. 6000).'
+    if (!INTEGER.test(stock.trim()) || Number(stock) > 100_000) return 'Stock inválido: usa un número entero entre 0 y 100.000.'
+    const lists = [fromText(top), fromText(heart), fromText(base)]
+    if (lists.some((l) => l.length > 20 || l.some((n) => n.length > 40)))
+      return 'Cada grupo de notas admite hasta 20 notas de hasta 40 caracteres.'
+    return null
+  }
 
   const handleSave = async () => {
-    const parsedPrice = Number(price)
-    const parsedStock = Number(stock)
     setSaveError(null)
+    const invalid = validate()
+    if (invalid) {
+      setSaveError(invalid)
+      return
+    }
+    const notes = { top: fromText(top), heart: fromText(heart), base: fromText(base) }
+    const patch: EditablePatch = {}
+    if (name.trim() !== original.name) patch.name = name.trim()
+    if (Number(price) !== original.price) patch.price = Number(price)
+    if (Number(stock) !== original.stock) patch.stock = Number(stock)
+    if (JSON.stringify(notes) !== JSON.stringify(original.notes)) patch.notes = notes
+    if (badge !== original.badge) patch.badge = badge
+    if (Object.keys(patch).length === 0) return
     try {
-      await onSave({
-        name: name.trim() || product.name,
-        price: Number.isFinite(parsedPrice) && parsedPrice >= 0 ? parsedPrice : product.price,
-        stock: Number.isFinite(parsedStock) ? Math.max(0, parsedStock) : 0,
-        notes: { top: fromText(top), heart: fromText(heart), base: fromText(base) },
-        badge,
-      })
+      await onSave(patch)
+      setOriginal({ ...original, ...patch })
       setSaved(true)
       setTimeout(() => setSaved(false), 1600)
     } catch {
