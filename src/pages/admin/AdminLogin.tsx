@@ -1,45 +1,63 @@
-import { motion } from 'framer-motion'
-import { Lock, Mail } from 'lucide-react'
-import { type FormEvent, useState } from 'react'
+import { LoaderCircle, Lock, Mail } from 'lucide-react'
+import { type FormEvent, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import logo from '../../assets/logo.webp'
+import { LogoMark } from '../../components/Logo'
 import { useAdminAuthStore } from '../../store/adminAuthStore'
+
+const fieldClass =
+  'h-12 w-full rounded-full bg-forest-950/70 pl-10 pr-4 text-base text-cream outline-none ring-1 ring-white/10 placeholder:text-cream/30 focus:ring-2 focus:ring-gold-400/60 disabled:opacity-60 sm:text-sm'
 
 export function AdminLogin() {
   const sessionChecked = useAdminAuthStore((s) => s.sessionChecked)
-  const isAuthed = useAdminAuthStore((s) => s.isAuthed)
+  const isAdmin = useAdminAuthStore((s) => s.isAdmin)
   const login = useAdminAuthStore((s) => s.login)
   const error = useAdminAuthStore((s) => s.error)
   const [email, setEmail] = useState('')
   const [passcode, setPasscode] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  // Candado síncrono contra el doble envío
+  const submittingRef = useRef(false)
 
-  if (sessionChecked && isAuthed) return <Navigate to="/admin" replace />
+  if (sessionChecked && isAdmin) return <Navigate to="/admin" replace />
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    login(email, passcode)
+    if (submittingRef.current) return
+    submittingRef.current = true
+    setSubmitting(true)
+    try {
+      await login(email, passcode)
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
+    }
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-forest-950 px-4">
-      <motion.form
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+    <div className="grid min-h-svh place-items-center bg-forest-950 px-4 py-10 [color-scheme:dark]">
+      <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm rounded-2xl bg-forest-800/60 p-8 ring-1 ring-white/10"
+        aria-labelledby="login-title"
+        aria-busy={submitting}
+        className="w-full max-w-sm rounded-2xl bg-forest-800 p-7 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] motion-safe:animate-[fade-up_600ms_var(--ease-lux)_both] sm:p-8"
       >
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <img src={logo} alt="FrankTester" className="h-16 w-16 rounded-full object-cover" />
-          <h1 className="font-display text-3xl text-cream">Panel Admin</h1>
-          <p className="text-sm text-cream/50">Acceso exclusivo para el equipo FrankTester</p>
+          <LogoMark className="h-16 w-16 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]" />
+          <h1 id="login-title" className="font-display text-3xl text-cream">
+            Panel admin
+          </h1>
+          <p className="text-sm text-cream-muted">Acceso exclusivo para el equipo FrankTester</p>
         </div>
 
-        <label className="mb-1.5 block text-xs uppercase tracking-wide text-cream/50" htmlFor="email">
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-cream-muted" htmlFor="email">
           Correo
         </label>
         <div className="relative mb-4">
-          <Mail size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-cream/40" />
+          <Mail
+            size={16}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-cream-muted"
+          />
           <input
             id="email"
             type="email"
@@ -48,15 +66,21 @@ export function AdminLogin() {
             placeholder="tu@correo.com"
             autoFocus
             autoComplete="username"
-            className="h-12 w-full rounded-full bg-forest-950/70 pl-10 pr-4 text-sm text-cream outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-gold-400/60"
+            required
+            disabled={submitting}
+            className={fieldClass}
           />
         </div>
 
-        <label className="mb-1.5 block text-xs uppercase tracking-wide text-cream/50" htmlFor="passcode">
-          Clave de acceso
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-cream-muted" htmlFor="passcode">
+          Clave
         </label>
-        <div className="relative mb-2">
-          <Lock size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-cream/40" />
+        <div className="relative">
+          <Lock
+            size={16}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-cream-muted"
+          />
           <input
             id="passcode"
             type="password"
@@ -64,18 +88,35 @@ export function AdminLogin() {
             onChange={(e) => setPasscode(e.target.value)}
             placeholder="••••••••"
             autoComplete="current-password"
-            className="h-12 w-full rounded-full bg-forest-950/70 pl-10 pr-4 text-sm text-cream outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-gold-400/60"
+            required
+            disabled={submitting}
+            aria-describedby={error ? 'login-error' : undefined}
+            className={fieldClass}
           />
         </div>
-        {error && <p className="mb-3 text-xs text-red-300">{error}</p>}
+
+        <div aria-live="assertive">
+          {error && (
+            <p id="login-error" className="mt-3 text-sm text-danger">
+              {error}
+            </p>
+          )}
+        </div>
 
         <button
           type="submit"
-          className="mt-4 min-h-[48px] w-full rounded-full bg-gold-500 text-sm font-bold uppercase tracking-wide text-forest-950 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.02] active:scale-[0.97]"
+          disabled={submitting}
+          className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-gold-500 text-sm font-bold uppercase tracking-wide text-forest-950 transition-[transform,background-color] duration-200 ease-lux hover:bg-gold-400 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100"
         >
-          Ingresar
+          {submitting ? (
+            <>
+              <LoaderCircle size={16} className="animate-spin" aria-hidden="true" /> Ingresando…
+            </>
+          ) : (
+            'Ingresar'
+          )}
         </button>
-      </motion.form>
+      </form>
     </div>
   )
 }
