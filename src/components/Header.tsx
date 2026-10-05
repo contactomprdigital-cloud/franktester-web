@@ -83,7 +83,7 @@ export function Header({ active, onSearchClick, onNavigate }: HeaderProps) {
             <span
               data-cart-badge
               aria-hidden="true"
-              className={`absolute right-px top-[3px] grid h-[19px] min-w-[19px] place-items-center rounded-full bg-gold-500 px-[5px] text-[11px] font-extrabold text-forest-950 transition-[transform,opacity] duration-200 ease-lux ${
+              className={`absolute right-px top-[3px] grid h-[19px] min-w-[19px] place-items-center rounded-full bg-gold-500 px-[5px] text-xs font-extrabold text-forest-950 transition-[transform,opacity] duration-200 ease-lux ${
                 count > 0 ? 'scale-100 opacity-100' : 'scale-[0.6] opacity-0'
               }`}
             >

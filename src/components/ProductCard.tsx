@@ -61,7 +61,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           />
           {/* Etiquetas apiladas: en la tarjeta de 2 columnas no caben una al lado de la otra */}
           {(product.badge || !inStock || lowStock) && (
-            <div className="absolute left-2.5 top-2.5 z-[2] flex flex-col items-start gap-1.5 text-[11.5px] font-extrabold">
+            <div className="absolute left-2.5 top-2.5 z-[2] flex flex-col items-start gap-1.5 text-xs font-extrabold">
               {product.badge && (
                 <span className={`rounded-full px-2.5 py-[5px] ${BADGE[product.badge].className}`}>
                   {BADGE[product.badge].label}
