@@ -1,4 +1,4 @@
-export type Section = 'hombre' | 'mujer' | 'nicho'
+export type Section = 'hombre' | 'mujer' | 'nicho' | 'ml50'
 
 export type Badge = 'bestseller' | 'new' | null
 
@@ -19,6 +19,10 @@ export interface Product {
   image: string
   badge: Badge
   stock: number
+  /** Oculto en la tienda (el panel admin lo sigue mostrando) */
+  hidden?: boolean
+  /** Agregado desde el panel admin (no existe en PRODUCTS_SEED); solo estos se pueden eliminar */
+  custom?: boolean
 }
 
 export interface Review {
