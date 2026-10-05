@@ -12,11 +12,10 @@ import { SearchFilterBar, type Filters } from '../components/SearchFilterBar'
 import { Toast } from '../components/Toast'
 import type { Section } from '../data/types'
 import { useActiveSection } from '../hooks/useActiveSection'
-import { useProductModal } from '../hooks/useProductModal'
+import { useVisibleSections } from '../hooks/useVisibleSections'
 import { useCatalogStore, useCatalogSync } from '../store/catalogStore'
 
 const EMPTY_FILTERS: Filters = { query: '', section: 'all', note: 'all', price: 'all' }
-const SECTION_IDS = ['hombre', 'mujer', 'nicho'] as const
 
 // "limon" encuentra "Limón Split": la búsqueda ignora tildes y mayúsculas
 const normalize = (text: string) =>
@@ -28,8 +27,8 @@ const normalize = (text: string) =>
 export function Home() {
   useCatalogSync()
   const products = useCatalogStore((s) => s.products)
+  const sections = useVisibleSections()
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS)
-  const { selectedProduct, lucky, closeModal } = useProductModal()
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const noteOptions = useMemo(() => {
@@ -66,10 +65,9 @@ export function Home() {
     })
   }, [products, filters, isFiltering])
 
-  const bySection = (section: Section) => products.filter((p) => p.section === section)
-
   // Colección en pantalla: marca la pestaña del header y el tinte del fondo
-  const active = useActiveSection(SECTION_IDS, !isFiltering)
+  const sectionIds = useMemo(() => sections.map((s) => s.id), [sections])
+  const active = useActiveSection(sectionIds, !isFiltering)
 
   // Tinte mientras se filtra: si el filtro de sección está fijado, ese es el
   // color correcto sin ambigüedad. Si no (ej. filtrando solo por nota), pero
@@ -82,14 +80,14 @@ export function Home() {
         ? filteredProducts[0].section
         : null
     : null
-  const tint = isFiltering ? (resultSection ?? 'top') : ((active as Section | null) ?? 'top')
+  const tint = isFiltering ? resultSection : active
 
   const scrollToId = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ block: 'start' })
   }
 
-  const handleNavigate = (id: string) => {
-    if ((id === 'hombre' || id === 'mujer' || id === 'nicho') && isFiltering) {
+  const handleNavigate = (id: Section) => {
+    if (isFiltering) {
       // La sección no existe en el DOM mientras se filtra (se reemplaza por
       // #resultados): limpiar filtros primero y esperar al siguiente frame,
       // ya con la sección de vuelta en el DOM, para poder hacer scroll.
@@ -110,50 +108,55 @@ export function Home() {
     <div className="min-h-screen">
       <AmbientBackground tint={tint} />
       <Header active={isFiltering ? null : active} onSearchClick={handleSearchClick} onNavigate={handleNavigate} />
-      <Hero onNavigate={handleNavigate} />
+      <main>
+        <Hero onNavigate={handleNavigate} />
 
-      <SearchFilterBar
-        filters={filters}
-        onChange={setFilters}
-        noteOptions={noteOptions}
-        priceOptions={priceOptions}
-        resultCount={filteredProducts.length}
-        isFiltering={isFiltering}
-        inputRef={searchInputRef}
-      />
+        <SearchFilterBar
+          filters={filters}
+          onChange={setFilters}
+          noteOptions={noteOptions}
+          priceOptions={priceOptions}
+          resultCount={filteredProducts.length}
+          isFiltering={isFiltering}
+          inputRef={searchInputRef}
+        />
 
-      {isFiltering ? (
-        <section id="resultados" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-10">
-          <Reveal className="mb-8">
-            <p className="m-0 text-xs font-bold uppercase tracking-[0.16em] text-trebol">Resultados</p>
-            <h2 className="mb-0 mt-1 text-4xl text-cream">
-              {filteredProducts.length
-                ? `${filteredProducts.length} ${filteredProducts.length === 1 ? 'fragancia encontrada' : 'fragancias encontradas'}`
-                : 'Sin resultados'}
-            </h2>
-          </Reveal>
-          {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-5">
-              {filteredProducts.map((product, i) => (
-                <ProductCard key={product.id} product={product} index={i} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-cream-muted">Prueba con otro nombre, nota olfativa o sección.</p>
-          )}
-        </section>
-      ) : (
-        <>
-          <ProductSection section="hombre" products={bySection('hombre')} />
-          <ProductSection section="mujer" products={bySection('mujer')} />
-          <ProductSection section="nicho" products={bySection('nicho')} />
-        </>
-      )}
+        {isFiltering ? (
+          <section id="resultados" aria-labelledby="resultados-title" className="mx-auto max-w-[1200px] px-4 pb-5 pt-11">
+            <Reveal className="mb-[18px] md:mb-7 md:text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-trebol">Resultados</p>
+              <h2 id="resultados-title" className="mb-1.5 mt-1 text-[clamp(38px,9vw,58px)] leading-none">
+                {filteredProducts.length
+                  ? `${filteredProducts.length} ${filteredProducts.length === 1 ? 'fragancia' : 'fragancias'}`
+                  : 'Sin resultados'}
+              </h2>
+              {filteredProducts.length === 0 && (
+                <p className="text-sm text-cream-muted">Prueba con otro nombre, nota olfativa o colección.</p>
+              )}
+            </Reveal>
+            {filteredProducts.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-4 min-[900px]:gap-5">
+                {filteredProducts.map((product, i) => (
+                  <ProductCard key={product.id} product={product} index={i} />
+                ))}
+              </div>
+            )}
+          </section>
+        ) : (
+          sections.map((section) => (
+            <ProductSection
+              key={section.id}
+              section={section}
+              products={products.filter((p) => p.section === section.id)}
+            />
+          ))
+        )}
+        {/* Reseñas ocultas hasta tener reseñas reales: src/data/reviews.ts es contenido de ejemplo */}
+      </main>
 
-      {/* Reseñas ocultas hasta tener reseñas reales: src/data/reviews.ts es contenido de ejemplo */}
       <Footer onNavigate={handleNavigate} />
       <CartDrawer />
-      <ProductModal product={selectedProduct} lucky={lucky} onClose={closeModal} />
+      <ProductModal />
       <Toast />
     </div>
   )

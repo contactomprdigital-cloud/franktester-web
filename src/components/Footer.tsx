@@ -1,50 +1,39 @@
-import { Link } from 'react-router-dom'
 import { BRAND, WHATSAPP_NUMBER } from '../config'
+import type { Section } from '../data/types'
+import { useVisibleSections } from '../hooks/useVisibleSections'
 import { Logo } from './Logo'
 
-const LINK = 'inline-flex min-h-11 items-center text-sm text-cream-muted transition-colors hover:text-gold-300'
+// min-h-11: área táctil de 44 px aunque el texto sea chico
+const LINK =
+  'inline-flex min-h-11 items-center px-2 text-[13px] font-semibold text-cream-muted transition-colors duration-150 hover:text-gold-300 active:opacity-70'
 
-export function Footer({ onNavigate }: { onNavigate: (id: string) => void }) {
+export function Footer({ onNavigate }: { onNavigate: (id: Section) => void }) {
+  const sections = useVisibleSections()
+
   return (
-    <footer className="mt-10 border-t border-white/[0.08] bg-forest-950/80 pb-10 pt-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
-        <div className="flex flex-col items-center gap-8 text-center sm:flex-row sm:items-start sm:justify-between sm:text-left">
-          <div className="flex flex-col items-center gap-2 sm:items-start">
-            <Logo />
-            <p className="m-0 text-sm text-cream-muted">
-              {BRAND.tagline} · {BRAND.city}
-            </p>
-          </div>
-
-          <nav aria-label="Colecciones" className="flex flex-col items-center sm:items-start">
-            <p className="mb-1 mt-0 text-xs uppercase tracking-[0.25em] text-cream-muted">Colecciones</p>
-            <button type="button" onClick={() => onNavigate('hombre')} className={LINK}>
-              Hombre
-            </button>
-            <button type="button" onClick={() => onNavigate('mujer')} className={LINK}>
-              Mujer
-            </button>
-            <button type="button" onClick={() => onNavigate('nicho')} className={LINK}>
-              Nicho / Unisex
-            </button>
-          </nav>
-
-          <div className="flex flex-col items-center sm:items-start">
-            <p className="mb-1 mt-0 text-xs uppercase tracking-[0.25em] text-cream-muted">Contacto</p>
-            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className={LINK}>
-              WhatsApp
-            </a>
-            <Link to="/admin" className={LINK}>
-              Panel admin
-            </Link>
-          </div>
-        </div>
-
-        <p className="mb-0 mt-10 text-center text-xs text-cream-muted">
-          © {new Date().getFullYear()} {BRAND.name}. Fragancias inspiradas — no afiliadas a las casas de perfumería
-          originales.
-        </p>
+    <footer className="mx-auto mt-10 max-w-[1200px] border-t border-white/[0.08] px-5 pb-16 pt-7 text-[13px] leading-relaxed text-cream-muted md:text-center">
+      <div className="mb-3 flex md:justify-center">
+        <Logo />
       </div>
+      <p>
+        {BRAND.name} · {BRAND.tagline} · {BRAND.city}
+      </p>
+
+      <nav aria-label="Enlaces del pie" className="-mx-2 my-2 flex flex-wrap md:justify-center">
+        {sections.map((section) => (
+          <button key={section.id} type="button" onClick={() => onNavigate(section.id)} className={LINK}>
+            {section.label}
+          </button>
+        ))}
+        <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className={LINK}>
+          WhatsApp
+        </a>
+      </nav>
+
+      <p>
+        Fragancias inspiradas en perfumes de marca. {BRAND.name} no está afiliado a las casas originales.
+        <br />© {new Date().getFullYear()} {BRAND.name}
+      </p>
     </footer>
   )
 }

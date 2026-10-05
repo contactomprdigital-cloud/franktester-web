@@ -1,6 +1,8 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { useState, type Ref } from 'react'
+import { isSection } from '../data/sections'
 import type { Section } from '../data/types'
+import { useVisibleSections } from '../hooks/useVisibleSections'
 
 export interface Filters {
   query: string
@@ -19,18 +21,12 @@ interface SearchFilterBarProps {
   inputRef?: Ref<HTMLInputElement>
 }
 
-const SECTION_OPTIONS: { value: Section | 'all'; label: string }[] = [
-  { value: 'all', label: 'Todas las secciones' },
-  { value: 'hombre', label: 'Hombre' },
-  { value: 'mujer', label: 'Mujer' },
-  { value: 'nicho', label: 'Nicho / Unisex' },
-]
-
 const clp = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 
-// text-base en móvil: iOS hace zoom al enfocar campos de menos de 16px
+// text-base en móvil: iOS hace zoom al enfocar campos de menos de 16px.
+// Borde dorado a 3,4:1 sobre la superficie (mínimo 3:1 para controles).
 const FIELD =
-  'h-11 rounded-full bg-forest-950/80 px-4 text-base text-cream outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-gold-300/70 md:text-sm'
+  'h-11 rounded-full bg-forest-950/80 px-4 text-base text-cream outline-none ring-1 ring-gold-300/45 focus-visible:ring-2 focus-visible:ring-gold-300 md:text-sm'
 
 export function SearchFilterBar({
   filters,
@@ -41,12 +37,13 @@ export function SearchFilterBar({
   isFiltering,
   inputRef,
 }: SearchFilterBarProps) {
+  const sections = useVisibleSections()
   const [expanded, setExpanded] = useState(false)
 
   const clearAll = () => onChange({ query: '', section: 'all', note: 'all', price: 'all' })
 
   return (
-    <section id="buscador" className="relative z-20 mx-auto max-w-5xl scroll-mt-28 px-4 sm:px-6">
+    <section id="buscador" aria-label="Buscar perfumes" className="relative z-20 mx-auto max-w-5xl px-4 sm:px-6">
       <div className="rounded-2xl bg-forest-900 p-3 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] ring-1 ring-white/10 sm:p-4">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -63,7 +60,8 @@ export function SearchFilterBar({
               onChange={(e) => onChange({ ...filters, query: e.target.value })}
               placeholder="Buscar por nombre o inspiración (ej. Sauvage)"
               aria-label="Buscar por nombre o inspiración"
-              className={`${FIELD} w-full pl-10 placeholder:text-cream-muted/80`}
+              enterKeyHint="search"
+              className={`${FIELD} w-full pl-10 placeholder:text-cream-muted`}
             />
           </div>
           <button
@@ -73,30 +71,32 @@ export function SearchFilterBar({
             aria-controls="filtros"
             aria-label={expanded ? 'Ocultar filtros' : 'Mostrar filtros'}
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ring-1 transition-[background-color,transform] duration-200 active:scale-90 ${
-              expanded ? 'bg-gold-500 text-forest-950 ring-gold-500' : 'text-cream/80 ring-white/15 hover:bg-white/10'
+              expanded ? 'bg-gold-500 text-forest-950 ring-gold-500' : 'text-cream ring-gold-300/45 hover:bg-white/10'
             }`}
           >
-            <SlidersHorizontal size={17} strokeWidth={1.75} />
+            <SlidersHorizontal size={17} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
 
         <div
           id="filtros"
-          className={`grid overflow-hidden transition-[grid-template-rows] duration-300 ease-lux ${
+          inert={!expanded}
+          className={`grid transition-[grid-template-rows] duration-300 ease-lux ${
             expanded ? 'mt-3 grid-rows-[1fr]' : 'grid-rows-[0fr]'
           }`}
         >
           <div className="min-h-0 overflow-hidden">
-            <div className="flex flex-wrap gap-2 pt-1">
+            <div className="flex flex-wrap gap-2 p-1">
               <select
                 value={filters.section}
-                onChange={(e) => onChange({ ...filters, section: e.target.value as Section | 'all' })}
-                aria-label="Filtrar por sección"
+                onChange={(e) => onChange({ ...filters, section: isSection(e.target.value) ? e.target.value : 'all' })}
+                aria-label="Filtrar por colección"
                 className={FIELD}
               >
-                {SECTION_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
+                <option value="all">Todas las colecciones</option>
+                {sections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.label}
                   </option>
                 ))}
               </select>
@@ -133,7 +133,7 @@ export function SearchFilterBar({
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="flex h-11 items-center gap-1 rounded-full bg-white/5 px-4 text-sm text-cream ring-1 ring-white/15 hover:bg-white/10"
+                  className="flex h-11 items-center gap-1 rounded-full bg-white/5 px-4 text-sm text-cream ring-1 ring-gold-300/45 hover:bg-white/10"
                 >
                   <X size={14} aria-hidden="true" /> Limpiar
                 </button>
@@ -142,7 +142,8 @@ export function SearchFilterBar({
           </div>
         </div>
 
-        <p className="mb-0 mt-2 px-1 text-xs text-cream-muted" aria-live="polite">
+        {/* Siempre montado (región aria-live): sin filtros solo deja de ocupar espacio */}
+        <p className={isFiltering ? 'mt-2 px-1 text-[13px] text-cream-muted' : 'sr-only'} aria-live="polite">
           {isFiltering ? `${resultCount} ${resultCount === 1 ? 'resultado' : 'resultados'}` : ''}
         </p>
       </div>

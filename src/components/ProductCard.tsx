@@ -2,11 +2,12 @@ import { Check, Plus } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { WHATSAPP_NUMBER } from '../config'
 import type { Product } from '../data/types'
-import { useProductModal } from '../hooks/useProductModal'
 import { useReveal } from '../hooks/useReveal'
 import { addWithFlight } from '../lib/motion'
 import { useCartStore } from '../store/cartStore'
+import { useProductModalStore } from '../store/productModalStore'
 import { useToastStore } from '../store/toastStore'
+import { ProductImage } from './ProductImage'
 
 const BADGE: Record<'bestseller' | 'new', { label: string; className: string }> = {
   bestseller: { label: 'Más vendido', className: 'bg-gold-500 text-forest-950' },
@@ -18,19 +19,17 @@ const clp = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP',
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
   const { ref, shown } = useReveal<HTMLDivElement>()
   const imgRef = useRef<HTMLImageElement>(null)
-  const [loaded, setLoaded] = useState(false)
+  // URL ya cargada (o fallida): el brillo de carga se apaga y la foto entra con un fundido
+  const [settledSrc, setSettledSrc] = useState<string | null>(null)
   const [added, setAdded] = useState(false)
   const addedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const addItem = useCartStore((s) => s.addItem)
   const showToast = useToastStore((s) => s.show)
-  const { openModal } = useProductModal()
+  const openModal = useProductModalStore((s) => s.open)
   const inStock = product.stock > 0
   const lowStock = inStock && product.stock <= 5
+  const settled = !product.image || settledSrc === product.image
 
-  // Imagen ya en caché: onLoad pudo dispararse antes de hidratar el handler
-  useEffect(() => {
-    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) setLoaded(true)
-  }, [])
   useEffect(() => () => clearTimeout(addedTimer.current), [])
 
   const onAdd = () => {
@@ -48,38 +47,35 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   return (
     <div ref={ref} className={`reveal ${shown ? 'in' : ''}`} style={{ '--i': index % 4 } as CSSProperties}>
       <article className="ft-card relative isolate flex h-full flex-col overflow-hidden rounded-[18px] bg-forest-800 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-        <div className={`ft-ph relative aspect-square overflow-hidden bg-forest-900 ${loaded ? 'loaded' : ''}`}>
-          <img
+        <div className={`ft-ph relative aspect-square overflow-hidden bg-forest-900 ${settled ? 'loaded' : ''}`}>
+          <ProductImage
             ref={imgRef}
             src={product.image}
             alt={`${product.name}, inspirado en ${product.inspiration}`}
             width={500}
             height={500}
             loading="lazy"
-            onLoad={() => setLoaded(true)}
-            onError={() => setLoaded(true)}
-            className={`h-full w-full object-cover ${inStock ? '' : 'grayscale'}`}
+            onLoad={() => setSettledSrc(product.image)}
+            onError={() => setSettledSrc(product.image)}
+            className={`h-full w-full object-cover ${inStock ? '' : 'opacity-60 grayscale'}`}
           />
-          {product.badge && (
-            <span
-              className={`absolute left-2.5 top-2.5 z-[2] rounded-full px-2.5 py-[5px] text-[11.5px] font-extrabold ${BADGE[product.badge].className}`}
-            >
-              {BADGE[product.badge].label}
-            </span>
-          )}
-          {!inStock && (
-            <span className="absolute right-2.5 top-2.5 z-[2] rounded-full bg-forest-950/85 px-2.5 py-[5px] text-[11.5px] font-extrabold text-danger">
-              Agotado
-            </span>
-          )}
-          {lowStock && (
-            <span className="absolute right-2.5 top-2.5 z-[2] rounded-full bg-forest-950/85 px-2.5 py-[5px] text-[11.5px] font-extrabold text-gold-300">
-              ¡Últimas {product.stock}!
-            </span>
+          {/* Etiquetas apiladas: en la tarjeta de 2 columnas no caben una al lado de la otra */}
+          {(product.badge || !inStock || lowStock) && (
+            <div className="absolute left-2.5 top-2.5 z-[2] flex flex-col items-start gap-1.5 text-[11.5px] font-extrabold">
+              {product.badge && (
+                <span className={`rounded-full px-2.5 py-[5px] ${BADGE[product.badge].className}`}>
+                  {BADGE[product.badge].label}
+                </span>
+              )}
+              {!inStock && <span className="rounded-full bg-forest-950/85 px-2.5 py-[5px] text-danger">Agotado</span>}
+              {lowStock && (
+                <span className="rounded-full bg-forest-950/85 px-2.5 py-[5px] text-gold-300">¡Últimas {product.stock}!</span>
+              )}
+            </div>
           )}
         </div>
 
-        <div className="flex flex-1 flex-col p-3 lg:px-4 lg:pb-4 lg:pt-3.5">
+        <div className="flex flex-1 flex-col p-3 min-[900px]:px-4 min-[900px]:pb-4 min-[900px]:pt-3.5">
           <h3 className="m-0 font-body text-[16.5px] font-bold tracking-normal">
             <button type="button" onClick={() => openModal(product)} className="ft-open text-left">
               {product.name}
@@ -98,7 +94,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
               }`}
             >
               <span className="l1">
-                <Plus size={16} strokeWidth={2.6} />
+                <Plus size={16} strokeWidth={2.6} aria-hidden="true" />
                 Agregar
               </span>
               <span className="l2" aria-hidden="true">

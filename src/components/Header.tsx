@@ -1,27 +1,23 @@
 import { Search, ShoppingBag } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Section } from '../data/types'
+import { shortLabel, useVisibleSections } from '../hooks/useVisibleSections'
 import { useCartStore } from '../store/cartStore'
 import { Logo } from './Logo'
 
-const TABS: { id: Section; label: string }[] = [
-  { id: 'hombre', label: 'Hombre' },
-  { id: 'mujer', label: 'Mujer' },
-  { id: 'nicho', label: 'Nicho' },
-]
-
 interface HeaderProps {
   /** Colección en pantalla (la marca la pestaña); null en la portada */
-  active: string | null
+  active: Section | null
   onSearchClick: () => void
-  onNavigate: (id: string) => void
+  onNavigate: (id: Section) => void
 }
 
 export function Header({ active, onSearchClick, onNavigate }: HeaderProps) {
+  const sections = useVisibleSections()
   const [scrolled, setScrolled] = useState(false)
   const count = useCartStore((s) => s.count())
   const openCart = useCartStore((s) => s.open)
-  const tabRefs = useRef<Partial<Record<Section, HTMLButtonElement | null>>>({})
+  const navRef = useRef<HTMLElement>(null)
   const indicatorRef = useRef<HTMLSpanElement>(null)
   const lastX = useRef(0)
 
@@ -38,7 +34,7 @@ export function Header({ active, onSearchClick, onNavigate }: HeaderProps) {
     const place = () => {
       const indicator = indicatorRef.current
       if (!indicator) return
-      const tab = active ? tabRefs.current[active as Section] : null
+      const tab = active ? navRef.current?.querySelector<HTMLElement>(`[data-tab="${active}"]`) : null
       if (!tab) {
         indicator.style.transform = `translateX(${lastX.current}px) scaleX(0)`
         return
@@ -50,7 +46,7 @@ export function Header({ active, onSearchClick, onNavigate }: HeaderProps) {
     place()
     window.addEventListener('resize', place)
     return () => window.removeEventListener('resize', place)
-  }, [active])
+  }, [active, sections])
 
   return (
     <header
@@ -58,7 +54,7 @@ export function Header({ active, onSearchClick, onNavigate }: HeaderProps) {
         scrolled ? 'bg-forest-950/95 shadow-[0_12px_30px_-16px_rgba(0,0,0,0.8)]' : 'bg-transparent'
       }`}
     >
-      <div className="mx-auto flex h-[60px] max-w-7xl items-center justify-between pl-4 pr-2 sm:pl-6 lg:px-10">
+      <div className="mx-auto flex h-[60px] max-w-[1200px] items-center justify-between pl-4 pr-2">
         <a href="#top" aria-label="FrankTester, ir al inicio" className="rounded-full">
           <Logo />
         </a>
@@ -68,18 +64,18 @@ export function Header({ active, onSearchClick, onNavigate }: HeaderProps) {
             type="button"
             onClick={onSearchClick}
             aria-label="Buscar perfumes"
-            className="grid h-11 w-11 place-items-center rounded-full text-cream/90 transition-[background-color,transform] duration-150 hover:bg-white/[0.07] active:scale-95"
+            className="grid h-11 w-11 place-items-center rounded-full text-cream transition-[background-color,transform] duration-150 hover:bg-white/[0.07] active:scale-95"
           >
-            <Search size={20} strokeWidth={1.75} />
+            <Search size={20} strokeWidth={1.9} aria-hidden="true" />
           </button>
           <button
             type="button"
             data-cart-button
             onClick={openCart}
             aria-label={`Abrir carrito, ${count} ${count === 1 ? 'producto' : 'productos'}`}
-            className="relative grid h-11 w-11 place-items-center rounded-full text-cream/90 transition-[background-color,transform] duration-150 hover:bg-white/[0.07] active:scale-95"
+            className="relative grid h-11 w-11 place-items-center rounded-full text-cream transition-[background-color,transform] duration-150 hover:bg-white/[0.07] active:scale-95"
           >
-            <ShoppingBag data-cart-icon size={20} strokeWidth={1.75} />
+            <ShoppingBag data-cart-icon size={20} strokeWidth={1.9} aria-hidden="true" />
             <span
               data-cart-ring
               className="pointer-events-none absolute inset-[5px] rounded-full border-[1.5px] border-gold-300 opacity-0"
@@ -87,7 +83,7 @@ export function Header({ active, onSearchClick, onNavigate }: HeaderProps) {
             <span
               data-cart-badge
               aria-hidden="true"
-              className={`absolute -right-0.5 top-0.5 grid h-[19px] min-w-[19px] place-items-center rounded-full bg-gold-500 px-[5px] text-[11px] font-extrabold text-forest-950 transition-[transform,opacity] duration-200 ease-lux ${
+              className={`absolute right-px top-[3px] grid h-[19px] min-w-[19px] place-items-center rounded-full bg-gold-500 px-[5px] text-[11px] font-extrabold text-forest-950 transition-[transform,opacity] duration-200 ease-lux ${
                 count > 0 ? 'scale-100 opacity-100' : 'scale-[0.6] opacity-0'
               }`}
             >
@@ -98,27 +94,27 @@ export function Header({ active, onSearchClick, onNavigate }: HeaderProps) {
       </div>
 
       <nav
+        ref={navRef}
         aria-label="Colecciones"
-        className="relative mx-auto flex max-w-7xl overflow-x-auto px-1.5 [scrollbar-width:none] sm:px-4 md:justify-center"
+        className="relative mx-auto flex max-w-[1200px] overflow-x-auto px-1.5 [scrollbar-width:none] md:justify-center"
       >
-        {TABS.map((tab) => (
+        {sections.map((section) => (
           <button
-            key={tab.id}
-            ref={(el) => {
-              tabRefs.current[tab.id] = el
-            }}
+            key={section.id}
+            data-tab={section.id}
             type="button"
-            onClick={() => onNavigate(tab.id)}
-            aria-current={active === tab.id ? 'location' : undefined}
-            className={`h-11 px-3.5 text-xs font-bold uppercase tracking-[0.12em] transition-colors duration-200 ${
-              active === tab.id ? 'text-cream' : 'text-cream-muted hover:text-cream'
+            onClick={() => onNavigate(section.id)}
+            aria-current={active === section.id ? 'location' : undefined}
+            className={`h-11 shrink-0 px-3.5 text-xs font-bold uppercase tracking-[0.12em] transition-colors duration-200 ${
+              active === section.id ? 'text-cream' : 'text-cream-muted hover:text-cream'
             }`}
           >
-            {tab.label}
+            {shortLabel(section)}
           </button>
         ))}
         <span
           ref={indicatorRef}
+          aria-hidden="true"
           className="tab-indicator absolute bottom-0 left-0 h-0.5 w-[100px] rounded-full bg-gradient-to-r from-gold-500 to-gold-300"
         />
       </nav>

@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <div className="grid min-h-screen place-items-center bg-forest-950 px-4 text-center">
           <div>
             <h1 className="font-display text-3xl text-cream">Algo salió mal</h1>
-            <p className="mt-2 text-sm text-cream/60">
+            <p className="mt-2 text-sm text-cream-muted">
               Ocurrió un error inesperado. Intenta recargar la página.
             </p>
             <button
