@@ -1,5 +1,2 @@
 User-agent: *
 Allow: /
-Disallow: /admin
-
-Sitemap: https://franktester.cl/sitemap.xml
