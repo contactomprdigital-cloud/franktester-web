@@ -388,6 +388,11 @@
     transform: translateY(-50%);
   }
 
+  /* Filtros del buscador: entran con un fundido corto al desplegarse */
+  .filters-in:not([hidden]) {
+    animation: fade-up 250ms var(--ease-lux) both;
+  }
+
   /* ---------- Pestañas: indicador que se desliza ---------- */
   .tab-indicator {
     transform-origin: left;
@@ -603,7 +608,8 @@
     .sheet-media img {
       transform: none;
     }
-    .drawer.open .drawer-line {
+    .drawer.open .drawer-line,
+    .filters-in:not([hidden]) {
       animation-name: fade;
     }
     .toast,

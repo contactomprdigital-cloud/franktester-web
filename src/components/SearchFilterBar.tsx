@@ -78,68 +78,59 @@ export function SearchFilterBar({
           </button>
         </div>
 
-        <div
-          id="filtros"
-          inert={!expanded}
-          className={`grid transition-[grid-template-rows] duration-300 ease-lux ${
-            expanded ? 'mt-3 grid-rows-[1fr]' : 'grid-rows-[0fr]'
-          }`}
-        >
-          <div className="min-h-0 overflow-hidden">
-            <div className="flex flex-wrap gap-2 p-1">
-              <select
-                value={filters.section}
-                onChange={(e) => onChange({ ...filters, section: isSection(e.target.value) ? e.target.value : 'all' })}
-                aria-label="Filtrar por colección"
-                className={FIELD}
-              >
-                <option value="all">Todas las colecciones</option>
-                {sections.map((section) => (
-                  <option key={section.id} value={section.id}>
-                    {section.label}
-                  </option>
-                ))}
-              </select>
+        {/* Sin animar la altura (provoca layout): el panel aparece y su contenido entra con opacidad y transform */}
+        <div id="filtros" hidden={!expanded} className="filters-in mt-3 flex flex-wrap gap-2 p-1">
+          <select
+            value={filters.section}
+            onChange={(e) => onChange({ ...filters, section: isSection(e.target.value) ? e.target.value : 'all' })}
+            aria-label="Filtrar por colección"
+            className={FIELD}
+          >
+            <option value="all">Todas las colecciones</option>
+            {sections.map((section) => (
+              <option key={section.id} value={section.id}>
+                {section.label}
+              </option>
+            ))}
+          </select>
 
-              <select
-                value={filters.note}
-                onChange={(e) => onChange({ ...filters, note: e.target.value })}
-                aria-label="Filtrar por nota olfativa"
-                className={`${FIELD} max-w-[60%]`}
-              >
-                <option value="all">Toda nota olfativa</option>
-                {noteOptions.map((note) => (
-                  <option key={note} value={note}>
-                    {note}
-                  </option>
-                ))}
-              </select>
+          <select
+            value={filters.note}
+            onChange={(e) => onChange({ ...filters, note: e.target.value })}
+            aria-label="Filtrar por nota olfativa"
+            className={`${FIELD} max-w-[60%]`}
+          >
+            <option value="all">Toda nota olfativa</option>
+            {noteOptions.map((note) => (
+              <option key={note} value={note}>
+                {note}
+              </option>
+            ))}
+          </select>
 
-              <select
-                value={filters.price}
-                onChange={(e) => onChange({ ...filters, price: e.target.value === 'all' ? 'all' : Number(e.target.value) })}
-                aria-label="Filtrar por precio"
-                className={FIELD}
-              >
-                <option value="all">Todo precio</option>
-                {priceOptions.map((price) => (
-                  <option key={price} value={price}>
-                    {clp.format(price)}
-                  </option>
-                ))}
-              </select>
+          <select
+            value={filters.price}
+            onChange={(e) => onChange({ ...filters, price: e.target.value === 'all' ? 'all' : Number(e.target.value) })}
+            aria-label="Filtrar por precio"
+            className={FIELD}
+          >
+            <option value="all">Todo precio</option>
+            {priceOptions.map((price) => (
+              <option key={price} value={price}>
+                {clp.format(price)}
+              </option>
+            ))}
+          </select>
 
-              {isFiltering && (
-                <button
-                  type="button"
-                  onClick={clearAll}
-                  className="flex h-11 items-center gap-1 rounded-full bg-white/5 px-4 text-sm text-cream ring-1 ring-gold-300/45 hover:bg-white/10"
-                >
-                  <X size={14} aria-hidden="true" /> Limpiar
-                </button>
-              )}
-            </div>
-          </div>
+          {isFiltering && (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="flex h-11 items-center gap-1 rounded-full bg-white/5 px-4 text-sm text-cream ring-1 ring-gold-300/45 hover:bg-white/10"
+            >
+              <X size={14} aria-hidden="true" /> Limpiar
+            </button>
+          )}
         </div>
 
         {/* Siempre montado (región aria-live): sin filtros solo deja de ocupar espacio */}
