@@ -1,6 +1,15 @@
 /* Las fuentes se cargan con <link> + preconnect en index.html (un @import aquí bloquea el render). */
 @import 'tailwindcss';
 
+/* hover: solo con puntero real. En pantallas táctiles el toque deja el hover "pegado". */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
 @theme {
   /* Paleta Trébol Dorado */
   --color-forest-950: #05130c; /* fondo de la página */
@@ -31,13 +40,22 @@
 
   html {
     background: var(--color-forest-950);
+    /* Header (60 px) + pestañas (44 px): las anclas no quedan tapadas */
     scroll-padding-top: 112px;
+    /* Reserva el ancho de la barra: bloquear el scroll con un diálogo abierto no corre la página */
+    scrollbar-gutter: stable;
   }
 
   @media (prefers-reduced-motion: no-preference) {
     html {
       scroll-behavior: smooth;
     }
+  }
+
+  /* Ficha o carrito abiertos: la página de fondo no se desplaza. Solo en html: con
+     overflow en body, body pasa a ser el contenedor de scroll y el header sticky se va. */
+  html.dialog-open {
+    overflow: hidden;
   }
 
   body {
@@ -51,10 +69,15 @@
     overflow-x: clip;
   }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
     font-weight: 600;
     letter-spacing: -0.01em;
+    /* Cormorant trae números antiguos por defecto: "50 ml" se leería "5o ml" */
+    font-variant-numeric: lining-nums;
   }
 
   ::selection {
@@ -67,7 +90,10 @@
     outline-offset: 3px;
   }
 
-  button, a, input, select {
+  button,
+  a,
+  input,
+  select {
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -99,25 +125,29 @@
     opacity: 0;
     transition: opacity 900ms ease;
   }
-  .amb-hombre {
+  .amb-tint.on {
+    opacity: 1;
+  }
+  /* Un tinte por colección. Los focos van lejos de donde cae el texto de cada cabecera. */
+  .amb-tint[data-s='hombre'] {
     background:
       radial-gradient(70% 55% at 88% 18%, rgba(47, 168, 79, 0.26), transparent 70%),
       radial-gradient(60% 45% at 8% 92%, rgba(201, 162, 39, 0.07), transparent 70%);
   }
-  .amb-mujer {
+  .amb-tint[data-s='mujer'] {
     background:
       radial-gradient(70% 55% at 12% 18%, rgba(219, 112, 160, 0.22), transparent 70%),
       radial-gradient(60% 45% at 92% 90%, rgba(201, 162, 39, 0.08), transparent 70%);
   }
-  .amb-nicho {
+  .amb-tint[data-s='nicho'] {
     background:
       radial-gradient(70% 55% at 85% 20%, rgba(31, 170, 160, 0.25), transparent 70%),
       radial-gradient(60% 45% at 10% 88%, rgba(201, 162, 39, 0.08), transparent 70%);
   }
-  .ambient[data-tint='hombre'] .amb-hombre,
-  .ambient[data-tint='mujer'] .amb-mujer,
-  .ambient[data-tint='nicho'] .amb-nicho {
-    opacity: 1;
+  .amb-tint[data-s='ml50'] {
+    background:
+      radial-gradient(70% 55% at 86% 16%, rgba(222, 168, 62, 0.2), transparent 70%),
+      radial-gradient(60% 45% at 10% 90%, rgba(47, 168, 79, 0.08), transparent 70%);
   }
   /* Tréboles dorados casi invisibles: más presentes hacia los bordes, limpios al centro (donde van los productos) */
   .amb-clover {
@@ -148,6 +178,7 @@
     opacity: 0;
     animation: twinkle 4.2s var(--ease-move) infinite;
   }
+  /* Fuera de pantalla el brillo ambiental se detiene */
   .hero.paused .hero-glow,
   .hero.paused .spark {
     animation-play-state: paused;
@@ -263,15 +294,18 @@
   .ft-ph.loaded img {
     opacity: 1;
   }
-  /* Brillo dorado mientras la imagen carga: movimiento constante, por eso linear */
+  /* Brillo dorado mientras la imagen carga (movimiento constante, por eso linear).
+     Solo en tarjetas ya reveladas: nada de animaciones infinitas fuera de pantalla. */
   .ft-ph::before {
     content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(100deg, transparent 30%, rgba(240, 221, 154, 0.08) 50%, transparent 70%);
     transform: translateX(-100%);
-    animation: shimmer 1.4s linear infinite;
     pointer-events: none;
+  }
+  .reveal.in .ft-ph::before {
+    animation: shimmer 1.4s linear infinite;
   }
   .ft-ph.loaded::before {
     display: none;
@@ -283,6 +317,14 @@
     background: linear-gradient(105deg, transparent 38%, rgba(255, 240, 200, 0.28) 50%, transparent 62%);
     transform: translateX(-120%);
     pointer-events: none;
+  }
+  /* Respaldo cuando no hay foto o no carga: el trébol de la marca sobre la superficie */
+  .img-fallback {
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(closest-side, rgba(201, 162, 39, 0.1), transparent),
+      var(--color-forest-900);
   }
 
   /* Botón "Agregar": el texto se intercambia con "Agregado" (transiciones: se puede tocar seguido) */
@@ -334,6 +376,21 @@
     box-shadow:
       0 12px 30px -12px rgba(201, 162, 39, 0.7),
       inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+  /* Área táctil de 44 px en controles que se ven más bajos (cantidades del carrito) */
+  .hit-44::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 44px;
+    transform: translateY(-50%);
+  }
+
+  /* Filtros del buscador: entran con un fundido corto al desplegarse */
+  .filters-in:not([hidden]) {
+    animation: fade-up 250ms var(--ease-lux) both;
   }
 
   /* ---------- Pestañas: indicador que se desliza ---------- */
@@ -425,7 +482,8 @@
       transform 420ms var(--ease-drawer),
       visibility 0s;
   }
-  .drawer-list.stagger .drawer-line {
+  /* Cascada al abrir; cambiar cantidades no la repite (las líneas siguen montadas) */
+  .drawer.open .drawer-line {
     animation: line-in 420ms var(--ease-lux) both;
     animation-delay: calc(90ms + var(--i) * 45ms);
   }
@@ -434,13 +492,20 @@
   .toast {
     transform: translate(-50%, 160%);
     opacity: 0;
+    visibility: hidden;
     transition:
       transform 300ms var(--ease-lux),
-      opacity 200ms ease;
+      opacity 200ms ease,
+      visibility 0s linear 300ms;
   }
   .toast.show {
     transform: translate(-50%, 0);
     opacity: 1;
+    visibility: visible;
+    transition:
+      transform 300ms var(--ease-lux),
+      opacity 200ms ease,
+      visibility 0s;
   }
 
   /* Hover solo en dispositivos con puntero real: en touch el tap dispara hovers falsos */
@@ -510,7 +575,7 @@
     .ft-ph::after {
       transition: none;
     }
-    .ft-ph::before {
+    .reveal.in .ft-ph::before {
       animation: none;
     }
     .sheet,
@@ -543,8 +608,13 @@
     .sheet-media img {
       transform: none;
     }
-    .drawer-list.stagger .drawer-line {
+    .drawer.open .drawer-line,
+    .filters-in:not([hidden]) {
       animation-name: fade;
+    }
+    .toast,
+    .toast.show {
+      transform: translate(-50%, 0);
     }
     .tab-indicator,
     .amb-tint {

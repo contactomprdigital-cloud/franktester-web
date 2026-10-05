@@ -7,7 +7,9 @@
   var seen = false
   try {
     seen = sessionStorage.getItem('ft-intro') === '1'
-  } catch (e) {}
+  } catch {
+    // Sin sessionStorage (modo privado estricto): se muestra la apertura igual
+  }
   // Las visitas siguientes de la sesión y el panel admin no muestran la apertura
   if (seen || location.pathname.indexOf('/admin') === 0) root.classList.add('ft-skip')
 
@@ -24,7 +26,10 @@
     done = true
     try {
       sessionStorage.setItem('ft-intro', '1')
-    } catch (e) {}
+    } catch {
+      // Sin sessionStorage: la próxima visita la vuelve a mostrar, nada más
+    }
+    root.classList.add('ft-done') // devuelve el scroll (ver boot.css)
     var curtain = document.getElementById('ft-curtain')
     if (!curtain || root.classList.contains('ft-skip')) {
       if (curtain) curtain.remove()

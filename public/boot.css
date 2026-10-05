@@ -4,6 +4,10 @@
 html {
   background: #05130c;
 }
+/* Mientras la cortina tapa la página, no se desplaza por debajo */
+html:not(.ft-skip):not(.ft-done) {
+  overflow: hidden;
+}
 
 #ft-curtain {
   position: fixed;

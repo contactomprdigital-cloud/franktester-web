@@ -11,34 +11,40 @@ export function Toast() {
   const visible = useToastStore((s) => s.visible)
   const hide = useToastStore((s) => s.hide)
   const openCart = useCartStore((s) => s.open)
+  const closeModal = useProductModalStore((s) => s.close)
 
   const onViewCart = () => {
     hide()
-    useProductModalStore.getState().close()
+    closeModal()
     openCart()
   }
 
   return createPortal(
-    <div
-      role="status"
-      aria-live="polite"
-      className={`toast fixed bottom-[calc(16px+env(safe-area-inset-bottom))] left-1/2 z-[95] flex max-w-[calc(100vw-24px)] items-center gap-3 whitespace-nowrap rounded-full border border-gold-300/25 bg-[#0f2a1a] py-2 pl-4 pr-2 text-sm shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)] ${
-        visible ? 'show' : 'pointer-events-none'
-      }`}
-    >
-      <Check size={18} className="text-trebol" aria-hidden="true" />
-      <span className="truncate">{message}</span>
-      {withCartAction && (
-        <button
-          type="button"
-          onClick={onViewCart}
-          tabIndex={visible ? 0 : -1}
-          className="h-9 shrink-0 rounded-full bg-gold-500 px-3.5 text-[13px] font-extrabold text-forest-950"
-        >
-          Ver carrito
-        </button>
-      )}
-    </div>,
+    <>
+      {/* Región siempre presente para el lector de pantalla; el aviso visible se oculta del todo al irse */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {visible ? message : ''}
+      </p>
+      <div
+        className={`toast fixed bottom-[calc(16px+env(safe-area-inset-bottom))] left-1/2 z-[95] flex max-w-[calc(100vw-24px)] items-center gap-3 whitespace-nowrap rounded-full border border-gold-300/25 bg-[#0f2a1a] py-2 pl-4 pr-2 text-sm shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)] ${
+          visible ? 'show' : ''
+        }`}
+      >
+        <Check size={18} className="shrink-0 text-trebol" aria-hidden="true" />
+        <span className="truncate" aria-hidden="true">
+          {message}
+        </span>
+        {withCartAction && (
+          <button
+            type="button"
+            onClick={onViewCart}
+            className="hit-44 relative h-9 shrink-0 rounded-full bg-gold-500 px-3.5 text-[13px] font-extrabold text-forest-950"
+          >
+            Ver carrito
+          </button>
+        )}
+      </div>
+    </>,
     document.body,
   )
 }

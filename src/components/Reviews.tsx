@@ -5,7 +5,7 @@ import { Reveal } from './Reveal'
 
 function Stars({ rating }: { rating: number }) {
   return (
-    <div className="flex gap-0.5 text-gold-400" aria-label={`${rating} de 5 estrellas`}>
+    <div className="flex gap-0.5 text-gold-400" role="img" aria-label={`${rating} de 5 estrellas`}>
       {Array.from({ length: 5 }).map((_, i) => (
         <Star key={i} size={15} fill={i < rating ? 'currentColor' : 'none'} strokeWidth={1.5} />
       ))}

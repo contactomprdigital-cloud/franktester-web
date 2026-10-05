@@ -3,10 +3,13 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } fr
 import { createPortal } from 'react-dom'
 import { WHATSAPP_NUMBER } from '../config'
 import type { OlfactoryNotes, Product } from '../data/types'
+import { useDialog } from '../hooks/useDialog'
 import { addWithFlight } from '../lib/motion'
 import { useCartStore } from '../store/cartStore'
+import { useProductModalStore } from '../store/productModalStore'
 import { useToastStore } from '../store/toastStore'
 import { CloverIcon, WhatsAppIcon } from './icons'
+import { ProductImage } from './ProductImage'
 
 const clp = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
 const stagger = (i: number) => ({ '--i': i }) as CSSProperties
@@ -18,20 +21,25 @@ const NOTE_GROUPS: { key: keyof OlfactoryNotes; label: string }[] = [
 ]
 const BADGE_LABEL = { bestseller: 'Más vendido', new: 'Nuevo' } as const
 
-interface ProductModalProps {
-  product: Product | null
-  /** Abierta con "Testea tu suerte" */
-  lucky: boolean
-  onClose: () => void
-}
-
 /** Ficha de producto: hoja que sube desde abajo en móvil (se cierra arrastrando), modal en escritorio. */
-export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
+export function ProductModal() {
+  const product = useProductModalStore((s) => s.selectedProduct)
+  const lucky = useProductModalStore((s) => s.lucky)
+  const seq = useProductModalStore((s) => s.seq)
+  const close = useProductModalStore((s) => s.close)
+  const addItem = useCartStore((s) => s.addItem)
+  const showToast = useToastStore((s) => s.show)
+
   // Queda montada al cerrar, con el último producto, para poder animar la salida
   const [current, setCurrent] = useState<Product | null>(product)
   if (product && product !== current) setCurrent(product)
-  const [open, setOpen] = useState(false)
-  const [added, setAdded] = useState(false)
+  // La clase "open" llega un frame después de montar el contenido: así corre la cascada de entrada
+  const [shownSeq, setShownSeq] = useState(0)
+  const open = product !== null && shownSeq === seq
+  // Apertura en la que se tocó "Agregar" (otra apertura vuelve a mostrar "Agregar al carrito")
+  const [addedSeq, setAddedSeq] = useState<number | null>(null)
+  const added = addedSeq === seq
+
   const sheetRef = useRef<HTMLDivElement>(null)
   const scrimRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -39,41 +47,15 @@ export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
   const imgRef = useRef<HTMLImageElement>(null)
   const drag = useRef<{ y0: number; y: number; t: number; v: number } | null>(null)
   const addedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const addItem = useCartStore((s) => s.addItem)
-  const showToast = useToastStore((s) => s.show)
 
-  // Un frame de espera al abrir: así la cascada de entrada corre con el contenido ya puesto
   useEffect(() => {
-    if (!product) {
-      setOpen(false)
-      return
-    }
-    setAdded(false)
+    if (!product) return
     if (scrollRef.current) scrollRef.current.scrollTop = 0
-    const frame = requestAnimationFrame(() => setOpen(true))
+    const frame = requestAnimationFrame(() => setShownSeq(seq))
     return () => cancelAnimationFrame(frame)
-  }, [product])
+  }, [product, seq])
 
-  // Abierta: el resto de la página queda inerte y sin scroll, Escape cierra y
-  // el foco vuelve a donde estaba al cerrar
-  useEffect(() => {
-    if (!open) return
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const root = document.getElementById('root')
-    root?.setAttribute('inert', '')
-    document.body.style.overflow = 'hidden'
-    closeRef.current?.focus({ preventScroll: true })
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      root?.removeAttribute('inert')
-      document.body.style.overflow = ''
-      window.removeEventListener('keydown', onKeyDown)
-      opener?.focus({ preventScroll: true })
-    }
-  }, [open, onClose])
+  useDialog(open, sheetRef, close, { initialFocus: closeRef })
 
   useEffect(() => () => clearTimeout(addedTimer.current), [])
 
@@ -110,15 +92,15 @@ export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
       scrimRef.current.style.transition = ''
       scrimRef.current.style.opacity = ''
     }
-    if (dy > 140 || d.v > 0.6) onClose()
+    if (dy > 140 || d.v > 0.6) close()
   }
 
   const onAdd = () => {
     if (!current) return
     const item = current
-    setAdded(true)
+    setAddedSeq(seq)
     clearTimeout(addedTimer.current)
-    addedTimer.current = setTimeout(() => setAdded(false), 1400)
+    addedTimer.current = setTimeout(() => setAddedSeq(null), 1400)
     showToast(`${item.name} agregado`, true)
     addWithFlight(imgRef.current, () => addItem(item))
   }
@@ -138,7 +120,7 @@ export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
     <>
       <div
         ref={scrimRef}
-        onClick={onClose}
+        onClick={close}
         className={`scrim fixed inset-0 z-[70] bg-[rgba(2,8,5,0.62)] ${open ? 'show' : ''}`}
       />
       <div
@@ -163,11 +145,11 @@ export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
         <button
           ref={closeRef}
           type="button"
-          onClick={onClose}
+          onClick={close}
           aria-label="Cerrar"
           className="absolute right-3 top-[34px] z-[3] grid h-11 w-11 place-items-center rounded-full bg-black/55 text-white transition-transform duration-150 active:scale-90 md:right-3.5 md:top-3.5"
         >
-          <X size={20} />
+          <X size={20} aria-hidden="true" />
         </button>
 
         {current && (
@@ -175,7 +157,7 @@ export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
             <div ref={scrollRef} className="overflow-y-auto overscroll-contain">
               <div className="px-4 pb-2 md:grid md:grid-cols-2 md:items-start md:gap-7 md:px-6 md:pt-6">
                 <div className="sheet-media overflow-hidden rounded-[18px] bg-forest-950">
-                  <img
+                  <ProductImage
                     ref={imgRef}
                     src={current.image}
                     alt={`${current.name}, inspirado en ${current.inspiration}`}
@@ -195,7 +177,7 @@ export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
                       Tu fragancia de la suerte
                     </span>
                   )}
-                  <p className="st m-0 text-sm font-semibold text-gold-300" style={stagger(0)}>
+                  <p className="st text-sm font-semibold text-gold-300" style={stagger(0)}>
                     Inspirado en {current.inspiration}
                   </p>
                   <h2 id="product-sheet-title" className="st mb-2.5 mt-0.5 text-[40px] leading-none" style={stagger(1)}>
@@ -221,20 +203,22 @@ export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
                   </div>
 
                   <div className="grid gap-3.5 px-1 py-[18px]">
-                    {NOTE_GROUPS.map((group, k) => (
-                      <div key={group.key} className="st" style={stagger(3 + k)}>
-                        <p className="mb-2 mt-0 text-xs font-bold uppercase tracking-[0.12em] text-cream-muted">
-                          {group.label}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {current.notes[group.key].map((note) => (
-                            <span key={note} className="rounded-full bg-forest-800 px-3 py-1.5 text-sm">
-                              {note}
-                            </span>
-                          ))}
+                    {NOTE_GROUPS.map((group, k) =>
+                      current.notes[group.key].length > 0 ? (
+                        <div key={group.key} className="st" style={stagger(3 + k)}>
+                          <p className="mb-2 text-xs font-bold uppercase tracking-[0.12em] text-cream-muted">
+                            {group.label}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {current.notes[group.key].map((note) => (
+                              <span key={note} className="rounded-full bg-forest-800 px-3 py-1.5 text-sm">
+                                {note}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ) : null,
+                    )}
                   </div>
                 </div>
               </div>
@@ -251,7 +235,7 @@ export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
                   }`}
                 >
                   <span className="l1">
-                    <Plus size={17} strokeWidth={2.6} />
+                    <Plus size={17} strokeWidth={2.6} aria-hidden="true" />
                     Agregar al carrito
                   </span>
                   <span className="l2" aria-hidden="true">
@@ -267,6 +251,7 @@ export function ProductModal({ product, lucky, onClose }: ProductModalProps) {
               <button
                 type="button"
                 onClick={onWhatsApp}
+                aria-label={inStock ? 'Consultar por WhatsApp' : 'Avísame por WhatsApp'}
                 className="press flex h-[52px] items-center gap-2 rounded-full border-[1.5px] border-whatsapp px-4 text-sm font-bold"
               >
                 <WhatsAppIcon className="h-5 w-5 text-whatsapp" />
