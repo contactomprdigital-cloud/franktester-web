@@ -38,3 +38,6 @@ PLAN.md
 
 # Local Netlify folder
 .netlify
+
+# Worktrees de agentes de Claude Code
+.claude/worktrees/
