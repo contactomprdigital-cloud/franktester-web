@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 .env
+.env.*
+!.env.example
+
+# Material interno de auditoría y planificación: el repo es público
+informes/
+PLAN.md
+
+# Ajustes locales de Claude Code
+.claude/settings.local.json
 
 # Raw/unprocessed source images (not used by the build — see src/assets/products)
 /assets
