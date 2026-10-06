@@ -11,8 +11,9 @@ import { ProductImage } from './ProductImage'
 // Si quien abrió el carrito ya no está (ej. el aviso "Ver carrito" se ocultó), el foco vuelve a la bolsa del header
 const cartButton = () => document.querySelector<HTMLElement>('[data-cart-button]')
 
+// El "+" en el tope usa aria-disabled y no disabled: un botón disabled pierde el foco y el teclado salta al inicio del diálogo
 const STEP_BUTTON =
-  'hit-44 relative grid h-9 w-11 place-items-center rounded-full border border-white/[0.12] transition-transform duration-100 active:scale-95 disabled:opacity-35 disabled:active:scale-100'
+  'hit-44 relative grid h-9 w-11 place-items-center rounded-full border border-white/[0.12] transition-transform duration-100 active:scale-95 aria-disabled:opacity-35 aria-disabled:active:scale-100'
 const REMOVE_BUTTON =
   '-mr-1.5 grid h-11 w-11 place-items-center rounded-full text-cream-muted transition-colors duration-150 hover:bg-danger/10 hover:text-danger'
 
@@ -78,7 +79,7 @@ export function CartDrawer() {
             </p>
           </div>
         ) : (
-          <ul className="m-0 grid flex-1 list-none content-start gap-2.5 overflow-y-auto overscroll-contain px-4 py-3.5">
+          <ul className="m-0 grid flex-1 list-none grid-cols-[minmax(0,1fr)] content-start gap-2.5 overflow-y-auto overscroll-contain px-4 py-3.5">
             {entries.map((entry, i) => {
               const { product } = entry
               const style = { '--i': i } as CSSProperties
@@ -86,7 +87,11 @@ export function CartDrawer() {
               if (isAvailable(entry)) {
                 const atMax = entry.qty >= entry.max
                 return (
-                  <li key={entry.id} className="drawer-line flex items-center gap-3 rounded-2xl bg-forest-800 p-2.5" style={style}>
+                  <li
+                    key={entry.id}
+                    className="drawer-line flex items-center gap-2.5 rounded-2xl bg-forest-800 p-2.5 min-[360px]:gap-3"
+                    style={style}
+                  >
                     <ProductImage
                       src={entry.product.image}
                       alt=""
@@ -99,6 +104,12 @@ export function CartDrawer() {
                       <p className="truncate text-[15px] font-bold">{entry.product.name}</p>
                       <p className="text-[12.5px] text-cream-muted">
                         {entry.product.volume} · {formatClp(entry.product.price)}
+                        {atMax && (
+                          <>
+                            {' '}
+                            <span className="whitespace-nowrap">· Máximo</span>
+                          </>
+                        )}
                       </p>
                       <div className="mt-1 flex items-center gap-1">
                         <button
@@ -114,14 +125,15 @@ export function CartDrawer() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => setQty(entry.id, entry.qty + 1)}
-                          disabled={atMax}
+                          onClick={() => {
+                            if (!atMax) setQty(entry.id, entry.qty + 1)
+                          }}
+                          aria-disabled={atMax}
                           aria-label={`Agregar uno de ${entry.product.name}`}
                           className={STEP_BUTTON}
                         >
                           <Plus size={14} aria-hidden="true" />
                         </button>
-                        {atMax && <span className="ml-1 text-[12px] text-cream-muted">Máximo</span>}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
