@@ -1,9 +1,9 @@
 import { Check, Plus } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { WHATSAPP_NUMBER } from '../config'
 import type { Product } from '../data/types'
 import { useReveal } from '../hooks/useReveal'
 import { addWithFlight } from '../lib/motion'
+import { productLink } from '../lib/whatsapp'
 import { useCartStore } from '../store/cartStore'
 import { useProductModalStore } from '../store/productModalStore'
 import { useToastStore } from '../store/toastStore'
@@ -40,9 +40,8 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
     addWithFlight(imgRef.current, () => addItem(product))
   }
 
-  const notifyHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-    `Hola, avísame cuando vuelva ${product.name} (${product.volume})`,
-  )}`
+  // Solo se muestra con stock 0: el helper arma el aviso de reposición
+  const notifyHref = productLink(product)
 
   return (
     <div ref={ref} className={`reveal ${shown ? 'in' : ''}`} style={{ '--i': index % 4 } as CSSProperties}>

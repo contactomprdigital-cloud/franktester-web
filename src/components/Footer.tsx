@@ -1,6 +1,7 @@
-import { BRAND, WHATSAPP_NUMBER } from '../config'
+import { BRAND } from '../config'
 import type { Section } from '../data/types'
 import { useVisibleSections } from '../hooks/useVisibleSections'
+import { generalLink } from '../lib/whatsapp'
 import { Logo } from './Logo'
 
 // min-h-11: área táctil de 44 px aunque el texto sea chico
@@ -25,7 +26,7 @@ export function Footer({ onNavigate }: { onNavigate: (id: Section) => void }) {
             {section.label}
           </button>
         ))}
-        <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className={LINK}>
+        <a href={generalLink()} target="_blank" rel="noopener noreferrer" className={LINK}>
           WhatsApp
         </a>
       </nav>

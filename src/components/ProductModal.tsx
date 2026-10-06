@@ -1,10 +1,10 @@
 import { Check, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { WHATSAPP_NUMBER } from '../config'
 import type { OlfactoryNotes, Product } from '../data/types'
 import { useDialog } from '../hooks/useDialog'
 import { addWithFlight } from '../lib/motion'
+import { productLink } from '../lib/whatsapp'
 import { useCartStore } from '../store/cartStore'
 import { useProductModalStore } from '../store/productModalStore'
 import { useToastStore } from '../store/toastStore'
@@ -107,11 +107,7 @@ export function ProductModal() {
 
   const onWhatsApp = () => {
     if (!current) return
-    const message =
-      current.stock > 0
-        ? `Hola, me interesa el perfume ${current.name} (${current.volume}, ${clp.format(current.price)})`
-        : `Hola, avísame cuando vuelva ${current.name} (${current.volume})`
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
+    window.open(productLink(current), '_blank', 'noopener,noreferrer')
   }
 
   const inStock = (current?.stock ?? 0) > 0
