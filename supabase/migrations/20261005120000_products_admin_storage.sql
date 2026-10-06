@@ -14,6 +14,10 @@
 --   Sin ese rol, nadie podrá editar el catálogo después de esta migración.
 -- =====================================================================
 
+-- El cambio de tipo de `price` toma un bloqueo exclusivo: si la tabla está
+-- ocupada, mejor fallar a los 5 s que dejar en cola las lecturas de la tienda.
+set local lock_timeout = '5s';
+
 
 -- ---------------------------------------------------------------------
 -- 0) Comprobación previa: si alguna fila no cumple las reglas nuevas, se
@@ -37,6 +41,7 @@ begin
      or char_length(volume) > 20
      or price is null
      or round(price::numeric) not between 1 and 1000000
+     or price <> round(price)
      or stock is null
      or stock not between 0 and 100000
      or notes is null
@@ -155,6 +160,12 @@ alter table public.products
     check (section in ('hombre', 'mujer', 'nicho', 'ml50')),
   add constraint products_name_length
     check (char_length(name) between 1 and 80),
+  add constraint products_name_not_blank
+    check (btrim(name) <> ''),
+  -- Un producto agregado desde el panel sin foto, inspiración o volumen el
+  -- cliente lo descarta (también en el panel) y ya no se podría editar.
+  add constraint products_custom_complete
+    check (not custom or (image_url is not null and btrim(inspiration) <> '' and btrim(volume) <> '')),
   add constraint products_inspiration_length
     check (char_length(inspiration) <= 80),
   add constraint products_volume_length
