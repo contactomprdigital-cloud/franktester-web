@@ -12,16 +12,15 @@
     />
     <title>FrankTester · Testea tu suerte</title>
 
-    <!-- Fondo y apertura de marca: antes que todo lo demás, para que no haya destello blanco -->
-    <link rel="stylesheet" href="/boot.css" />
-    <script src="/boot.js"></script>
-
+    <!-- Conexión a Google Fonts lista antes de que boot.js pida la hoja de fuentes (no es un <link>
+         de hoja aquí: una hoja en el <head> bloquea el primer render y el arranque de la app) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Manrope:wght@400..800&display=swap"
-    />
+
+    <!-- Fondo y apertura de marca: antes que todo lo demás, para que no haya destello blanco.
+         boot.js también agrega la hoja de fuentes sin bloquear. -->
+    <link rel="stylesheet" href="/boot.css" />
+    <script src="/boot.js"></script>
 
     <!-- ⚠️ Reemplazar por el dominio real antes de publicar. -->
     <link rel="canonical" href="https://franktester.cl/" />
@@ -96,6 +95,9 @@
       </div>
     </div>
     <div id="root"></div>
+    <noscript>
+      <div class="ft-fail"><p>Para ver la tienda necesitas activar JavaScript en tu navegador.</p></div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

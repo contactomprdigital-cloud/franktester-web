@@ -13,6 +13,19 @@
   // Las visitas siguientes de la sesión y el panel admin no muestran la apertura
   if (seen || location.pathname.indexOf('/admin') === 0) root.classList.add('ft-skip')
 
+  // Fuentes sin bloquear el primer render ni el arranque de la app. Una hoja de estilos
+  // en el <head> frena el render y los módulos esperan a que termine de cargar: con red
+  // lenta la app tardaba segundos en montar. Agregada desde aquí no bloquea nada.
+  // (Sin onload en el HTML: la CSP no permite manejadores en línea.)
+  var fontsCss = document.createElement('link')
+  fontsCss.rel = 'stylesheet'
+  fontsCss.href =
+    'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Manrope:wght@400..800&display=swap'
+  var fontsCssDone = new Promise(function (resolve) {
+    fontsCss.onload = fontsCss.onerror = resolve
+  })
+  document.head.appendChild(fontsCss)
+
   var done = false
 
   // Avisa a la portada que puede arrancar su animación
@@ -46,7 +59,10 @@
   // La app llama a esto cuando terminó de montar (ver src/main.tsx)
   window.__ftAppReady = function () {
     var skip = root.classList.contains('ft-skip')
-    var fonts = document.fonts ? document.fonts.ready : Promise.resolve()
+    // Primero la hoja de fuentes (sin ella document.fonts.ready ya está resuelto), luego las fuentes
+    var fonts = fontsCssDone.then(function () {
+      return document.fonts ? document.fonts.ready : undefined
+    })
     var cap = new Promise(function (resolve) {
       setTimeout(resolve, skip ? 500 : 2500)
     })
@@ -62,6 +78,41 @@
     if (target && target.closest && target.closest('#ft-curtain')) exit()
   })
 
-  // Si la app no llegara a cargar, no dejar a nadie atrapado detrás de la cortina
-  setTimeout(exit, 8000)
+  // La app no llegó a montar (el paquete no cargó o falló al arrancar): se levanta la cortina
+  // y, si #root sigue vacío, queda un mensaje con botón para reintentar. Si la app monta más
+  // tarde (red muy lenta), React reemplaza el contenido de #root y el mensaje desaparece.
+  function showFail() {
+    exit()
+    var mount = document.getElementById('root')
+    if (!mount || mount.firstChild) return
+    var box = document.createElement('div')
+    box.className = 'ft-fail'
+    box.setAttribute('role', 'alert')
+    var text = document.createElement('p')
+    text.textContent = 'La tienda no terminó de cargar. Revisa tu conexión y vuelve a intentarlo.'
+    var retry = document.createElement('button')
+    retry.type = 'button'
+    retry.textContent = 'Reintentar'
+    retry.addEventListener('click', function () {
+      location.reload()
+    })
+    box.appendChild(text)
+    box.appendChild(retry)
+    mount.appendChild(box)
+  }
+
+  // Si el archivo de la app falla (404, sin red, bloqueado) no hace falta esperar al tope de tiempo.
+  // Los errores de carga no burbujean: se escuchan en la fase de captura.
+  window.addEventListener(
+    'error',
+    function (event) {
+      var el = event.target
+      if (el && el.tagName === 'SCRIPT' && el.type === 'module') showFail()
+    },
+    true,
+  )
+
+  // Tope de espera: no dejar a nadie atrapado detrás de la cortina ni frente a una página vacía.
+  // Si ni siquiera corre este archivo, boot.css levanta cortina y bloqueo de scroll por su cuenta.
+  setTimeout(showFail, 8000)
 })()
