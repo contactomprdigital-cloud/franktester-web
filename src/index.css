@@ -58,9 +58,10 @@
     overflow: hidden;
   }
 
+  /* body sin fondo propio: el de html ya pinta el lienzo. Si body tuviera uno, se pintaría
+     encima del fondo ambiental (capa fija con z-index negativo) y lo taparía por completo. */
   body {
     margin: 0;
-    background: var(--color-forest-950);
     color: var(--color-cream);
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
@@ -136,7 +137,7 @@
   }
   .amb-tint[data-s='mujer'] {
     background:
-      radial-gradient(70% 55% at 12% 18%, rgba(219, 112, 160, 0.22), transparent 70%),
+      radial-gradient(70% 55% at 88% 18%, rgba(219, 112, 160, 0.22), transparent 70%),
       radial-gradient(60% 45% at 92% 90%, rgba(201, 162, 39, 0.08), transparent 70%);
   }
   .amb-tint[data-s='nicho'] {
