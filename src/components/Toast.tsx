@@ -14,6 +14,9 @@ export function Toast() {
   const closeModal = useProductModalStore((s) => s.close)
   // Con la ficha abierta en móvil, el pie de la ficha (botones) ocupa el borde inferior
   const modalOpen = useProductModalStore((s) => s.selectedProduct !== null)
+  // Con el carrito abierto el aviso sobra y taparía "Pedir por WhatsApp"
+  const cartOpen = useCartStore((s) => s.isOpen)
+  const shown = visible && !cartOpen
 
   const onViewCart = () => {
     hide()
@@ -25,11 +28,11 @@ export function Toast() {
     <>
       {/* Región siempre presente para el lector de pantalla; el aviso visible se oculta del todo al irse */}
       <p className="sr-only" role="status" aria-live="polite">
-        {visible ? message : ''}
+        {shown ? message : ''}
       </p>
       <div
         className={`toast fixed bottom-[calc(16px+env(safe-area-inset-bottom))] left-1/2 z-[95] flex max-w-[calc(100vw-24px)] items-center gap-3 whitespace-nowrap rounded-full border border-gold-300/25 bg-[#0f2a1a] py-2 pl-4 pr-2 text-sm shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)] ${
-          visible ? 'show' : ''
+          shown ? 'show' : ''
         } ${modalOpen ? '-translate-y-20 md:translate-y-0' : ''}`}
       >
         <Check size={18} className="shrink-0 text-trebol" aria-hidden="true" />

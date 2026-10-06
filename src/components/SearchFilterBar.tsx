@@ -100,7 +100,7 @@ export function SearchFilterBar({
             aria-label="Filtrar por nota olfativa"
             className={`${FIELD} max-w-[60%]`}
           >
-            <option value="all">Toda nota olfativa</option>
+            <option value="all">Todas las notas</option>
             {noteOptions.map((note) => (
               <option key={note} value={note}>
                 {note}
@@ -114,7 +114,7 @@ export function SearchFilterBar({
             aria-label="Filtrar por precio"
             className={FIELD}
           >
-            <option value="all">Todo precio</option>
+            <option value="all">Todos los precios</option>
             {priceOptions.map((price) => (
               <option key={price} value={price}>
                 {clp.format(price)}

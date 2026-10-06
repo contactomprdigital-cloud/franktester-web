@@ -330,6 +330,7 @@
 
   /* Botón "Agregar": el texto se intercambia con "Agregado" (transiciones: se puede tocar seguido) */
   .add-btn {
+    background-color: var(--color-gold-500);
     display: grid;
     place-items: center;
     overflow: hidden;

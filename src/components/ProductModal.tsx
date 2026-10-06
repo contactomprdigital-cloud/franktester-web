@@ -225,7 +225,7 @@ export function ProductModal() {
                   type="button"
                   onClick={onAdd}
                   aria-label={`Agregar ${current.name} al carrito`}
-                  className={`add-btn h-[52px] flex-1 whitespace-nowrap rounded-full bg-gold-500 text-[15px] font-extrabold text-forest-950 ${
+                  className={`add-btn h-[52px] flex-1 whitespace-nowrap rounded-full text-[15px] font-extrabold text-forest-950 ${
                     added ? 'done' : ''
                   }`}
                 >

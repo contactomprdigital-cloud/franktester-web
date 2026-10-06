@@ -499,7 +499,7 @@ export const PRODUCTS_SEED: Product[] = [
     notes: {
       top: ['Mandarina verde', 'Pera'],
       heart: ['Jazmín', 'Sal marina'],
-      base: ['Vainilla', 'Cashmere wood', 'Ámbar gris'],
+      base: ['Vainilla', 'Madera de cachemira', 'Ámbar gris'],
     },
   },
   {

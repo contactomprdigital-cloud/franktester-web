@@ -87,7 +87,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
               type="button"
               onClick={onAdd}
               aria-label={`Agregar ${product.name} al carrito`}
-              className={`add-btn relative z-[2] mt-auto h-11 rounded-full bg-gold-500 text-[13.5px] font-extrabold text-forest-950 ${
+              className={`add-btn relative z-[2] mt-auto h-11 rounded-full text-[13.5px] font-extrabold text-forest-950 ${
                 added ? 'done' : ''
               }`}
             >
