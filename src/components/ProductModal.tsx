@@ -5,7 +5,6 @@ import type { OlfactoryNotes, Product } from '../data/types'
 import { useDialog } from '../hooks/useDialog'
 import { addWithFlight } from '../lib/motion'
 import { productLink } from '../lib/whatsapp'
-import { useCartStore } from '../store/cartStore'
 import { useProductModalStore } from '../store/productModalStore'
 import { useToastStore } from '../store/toastStore'
 import { CloverIcon, WhatsAppIcon } from './icons'
@@ -27,7 +26,6 @@ export function ProductModal() {
   const lucky = useProductModalStore((s) => s.lucky)
   const seq = useProductModalStore((s) => s.seq)
   const close = useProductModalStore((s) => s.close)
-  const addItem = useCartStore((s) => s.addItem)
   const showToast = useToastStore((s) => s.show)
 
   // Queda montada al cerrar, con el último producto, para poder animar la salida
@@ -98,11 +96,12 @@ export function ProductModal() {
   const onAdd = () => {
     if (!current) return
     const item = current
+    // Si ya no cabe otra unidad, addWithFlight muestra el aviso del motivo y no hay "Agregado"
+    if (!addWithFlight(imgRef.current, item)) return
     setAddedSeq(seq)
     clearTimeout(addedTimer.current)
     addedTimer.current = setTimeout(() => setAddedSeq(null), 1400)
     showToast(`${item.name} agregado`, true)
-    addWithFlight(imgRef.current, () => addItem(item))
   }
 
   const onWhatsApp = () => {
@@ -226,7 +225,7 @@ export function ProductModal() {
                   type="button"
                   onClick={onAdd}
                   aria-label={`Agregar ${current.name} al carrito`}
-                  className={`add-btn h-[52px] flex-1 rounded-full bg-gold-500 text-[15px] font-extrabold text-forest-950 ${
+                  className={`add-btn h-[52px] flex-1 whitespace-nowrap rounded-full bg-gold-500 text-[15px] font-extrabold text-forest-950 ${
                     added ? 'done' : ''
                   }`}
                 >
@@ -251,7 +250,8 @@ export function ProductModal() {
                 className="press flex h-[52px] items-center gap-2 rounded-full border-[1.5px] border-whatsapp px-4 text-sm font-bold"
               >
                 <WhatsAppIcon className="h-5 w-5 text-whatsapp" />
-                {inStock ? 'Consultar' : 'Avísame'}
+                {/* Bajo 360 px solo el ícono (el botón tiene aria-label): así "Agregar al carrito" cabe en una línea */}
+                <span className="hidden min-[360px]:inline">{inStock ? 'Consultar' : 'Avísame'}</span>
               </button>
             </div>
           </>

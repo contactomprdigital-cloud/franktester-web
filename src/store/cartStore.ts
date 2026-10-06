@@ -89,6 +89,30 @@ export const cartCount = (entries: readonly CartEntry[]) => available(entries).r
 
 const entriesNow = (lines: readonly CartLine[]) => resolveCart(lines, useCatalogStore.getState().products)
 
+/**
+ * Motivo por el que no cabe otra unidad de este producto, con el texto del aviso (null = cabe).
+ * `pending` son las unidades que ya salieron volando hacia la bolsa y aún no están en las líneas.
+ * Se usa el producto vivo del catálogo: la ficha abierta puede tener un stock desactualizado.
+ */
+function addBlocker(product: Product, lines: readonly CartLine[], pending: number): string | null {
+  const live = useCatalogStore.getState().products.find((p) => p.id === product.id)
+  const max = live ? maxQty(live.stock) : 0
+  if (!live || max < 1 || !ID_PATTERN.test(live.id)) return `${product.name} ya no está disponible`
+  const qty = (lines.find((l) => l.id === live.id)?.qty ?? 0) + pending
+  if (qty < max) return null
+  return max < MAX_QTY ? `Solo hay ${max} de ${live.name}` : `Máximo ${MAX_QTY} de ${live.name} por pedido`
+}
+
+/**
+ * ¿Cabe otra unidad? Si no, muestra el aviso con el motivo y devuelve false. Sirve para
+ * decidir antes de animar un "Agregar": así no se muestra "Agregado" para después desmentirlo.
+ */
+export function checkAdd(product: Product, pending = 0): boolean {
+  const reason = addBlocker(product, useCartStore.getState().lines, pending)
+  if (reason) useToastStore.getState().show(reason, true)
+  return reason === null
+}
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -101,7 +125,8 @@ interface CartState {
   open: () => void
   close: () => void
   toggle: () => void
-  addItem: (product: Product) => void
+  /** Suma una unidad. Devuelve false, con el aviso del motivo, si no se pudo agregar. */
+  addItem: (product: Product) => boolean
   removeItem: (id: string) => void
   setQty: (id: string, qty: number) => void
   clear: () => void
@@ -121,25 +146,19 @@ export const useCartStore = create<CartState>()(
       close: () => set({ isOpen: false }),
       toggle: () => set((s) => ({ isOpen: !s.isOpen })),
       addItem: (product) => {
-        // Se usa el producto vivo del catálogo: la ficha abierta puede tener un stock desactualizado
-        const live = useCatalogStore.getState().products.find((p) => p.id === product.id)
-        const max = live ? maxQty(live.stock) : 0
-        if (!live || max < 1 || !ID_PATTERN.test(live.id)) {
-          useToastStore.getState().show(`${product.name} ya no está disponible`, true)
-          return
+        const reason = addBlocker(product, get().lines, 0)
+        if (reason) {
+          useToastStore.getState().show(reason, true)
+          return false
         }
-        const existing = get().lines.find((l) => l.id === live.id)
-        if (existing && existing.qty >= max) {
-          useToastStore
-            .getState()
-            .show(max < MAX_QTY ? `Solo hay ${max} de ${live.name}` : `Máximo ${MAX_QTY} de ${live.name} por pedido`, true)
-          return
-        }
+        // addBlocker ya comprobó que el producto está en el catálogo; se agrega por su id
+        const id = product.id
         set((state) => ({
-          lines: existing
-            ? state.lines.map((l) => (l.id === live.id ? { ...l, qty: l.qty + 1 } : l))
-            : [...state.lines, { id: live.id, qty: 1 }],
+          lines: state.lines.some((l) => l.id === id)
+            ? state.lines.map((l) => (l.id === id ? { ...l, qty: l.qty + 1 } : l))
+            : [...state.lines, { id, qty: 1 }],
         }))
+        return true
       },
       removeItem: (id) => set((state) => ({ lines: state.lines.filter((l) => l.id !== id) })),
       setQty: (id, qty) =>

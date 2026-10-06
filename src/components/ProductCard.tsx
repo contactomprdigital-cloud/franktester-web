@@ -4,7 +4,6 @@ import type { Product } from '../data/types'
 import { useReveal } from '../hooks/useReveal'
 import { addWithFlight } from '../lib/motion'
 import { productLink } from '../lib/whatsapp'
-import { useCartStore } from '../store/cartStore'
 import { useProductModalStore } from '../store/productModalStore'
 import { useToastStore } from '../store/toastStore'
 import { ProductImage } from './ProductImage'
@@ -23,7 +22,6 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   const [settledSrc, setSettledSrc] = useState<string | null>(null)
   const [added, setAdded] = useState(false)
   const addedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const addItem = useCartStore((s) => s.addItem)
   const showToast = useToastStore((s) => s.show)
   const openModal = useProductModalStore((s) => s.open)
   const inStock = product.stock > 0
@@ -33,11 +31,12 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   useEffect(() => () => clearTimeout(addedTimer.current), [])
 
   const onAdd = () => {
+    // Si ya no cabe otra unidad, addWithFlight muestra el aviso del motivo y no hay "Agregado"
+    if (!addWithFlight(imgRef.current, product)) return
     setAdded(true)
     clearTimeout(addedTimer.current)
     addedTimer.current = setTimeout(() => setAdded(false), 1400)
     showToast(`${product.name} agregado`, true)
-    addWithFlight(imgRef.current, () => addItem(product))
   }
 
   // Solo se muestra con stock 0: el helper arma el aviso de reposición

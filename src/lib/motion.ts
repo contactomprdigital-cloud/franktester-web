@@ -1,21 +1,37 @@
+import type { Product } from '../data/types'
+import { checkAdd, useCartStore } from '../store/cartStore'
+
 // Mismas curvas que los tokens --ease-lux y --ease-move de index.css, para WAAPI
 export const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)'
 export const EASE_MOVE = 'cubic-bezier(0.77, 0, 0.175, 1)'
 
 export const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+// Unidades de cada producto que ya salieron volando y aún no aterrizan: cuentan contra el tope,
+// así un toque rápido de más no muestra "Agregado" para desmentirlo al llegar el frasco
+const flying = new Map<string, number>()
+
 /**
  * Agrega al carrito con el frasco viajando en arco hasta la bolsa del header:
  * X con ease-in-out, Y sube y luego baja. El contador se actualiza al aterrizar.
  * Con movimiento reducido (o sin imagen) agrega directo.
+ * Devuelve false, sin animar nada, si ya no cabe otra unidad: el aviso con el motivo
+ * ya salió y quien llama no debe mostrar "Agregado".
  */
-export function addWithFlight(img: HTMLImageElement | null, add: () => void) {
+export function addWithFlight(img: HTMLImageElement | null, product: Product): boolean {
+  const pending = flying.get(product.id) ?? 0
+  if (!checkAdd(product, pending)) return false
+
+  // Si el catálogo cambió durante el vuelo, addItem avisa el motivo y el contador no salta
+  const add = () => {
+    if (useCartStore.getState().addItem(product)) bumpCart()
+  }
   const target = document.querySelector<HTMLElement>('[data-cart-button]')
   if (!img || !target || prefersReducedMotion()) {
     add()
-    bumpCart()
-    return
+    return true
   }
+  flying.set(product.id, pending + 1)
   const s = img.getBoundingClientRect()
   const t = target.getBoundingClientRect()
   const size = Math.min(s.width, 150)
@@ -52,9 +68,12 @@ export function addWithFlight(img: HTMLImageElement | null, add: () => void) {
     .finished.catch(() => {})
     .finally(() => {
       outer.remove()
+      const left = (flying.get(product.id) ?? 1) - 1
+      if (left > 0) flying.set(product.id, left)
+      else flying.delete(product.id)
       add()
-      bumpCart()
     })
+  return true
 }
 
 /** La bolsa da un pequeño salto, suelta un anillo dorado y el contador entra desde abajo. */
